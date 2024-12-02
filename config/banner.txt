@@ -1,0 +1,9 @@
+Custom Boot Banner Example
+
+Kernel Entries:
+
+    1: SimpleOS 32-bit
+
+    2: Phat OS 16-bit
+
+    3: Memtest86+
