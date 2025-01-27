@@ -4,6 +4,9 @@ Kernel Entries:
 
     1: SimpleOS 32-bit
 
-    2: Phat OS 16-bit
+    2: PhatOS 16-bit
 
-    3: Memtest86+
+    3: Memtest86+ 32-bit
+
+    4: Memtest86+ 64-bit
+
