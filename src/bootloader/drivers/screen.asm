@@ -1,5 +1,5 @@
 [bits 16]
-[SECTION .text]
+[section .text]
     PRINT:
         pusha
         mov ah, 0x0e

@@ -1,5 +1,5 @@
 [bits 16]
-[SECTION .text]
+[section .text]
     PLAY_PC_SPEAKER_TONE:
         pusha
 

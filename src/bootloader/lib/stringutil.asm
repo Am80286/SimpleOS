@@ -1,5 +1,5 @@
 [bits 16]
-[SECTION .text]
+[section .text]
     HEX_WORD_STRING_TO_NUM: ; DS:SI - string pointer, DX - result
         push ax             ; This implementation is a little janky, practically the same as the DEC_WORD_STRING_TO_NUM
         push bx             ; gonna have to rewrite it later also
@@ -61,8 +61,69 @@
         pop ax
         ret
 
+    HEX_DWORD_STRING_TO_NUM:    ; DS:SI - string pointer, EDX - result
+        push eax                ; the same as HEX_WORD_STING_TO_NUM, but for dword values
+        push ebx                ; again I don't like how it's implemeted
+        push cx
+        push si
+
+        xor cx, cx
+        xor edx, edx
+
+    .find_string_end:
+        inc cx
+        lodsb
+        cmp al, 0
+        jne .find_string_end
+
+        mov eax, 1   ; ax is used as a multiplier 
+        sub cx, 3
+        sub si, 2   ; set the string pointer to the end character
+        std         ; setting the DF to iterate backwards through the number string
+                    ; this is done bacause we need to know ....
+    .convert_char:
+        push eax     ; save the multiplier
+
+        lodsb
+
+        cmp al, '9'
+        jbe .number_char
+
+    .letter_char:
+        sub al, 7
+
+    .number_char:
+        sub al, 48
+        and al, 0xf ; remove the upper nibble (only needed for lower case letters)
+        
+        xor ebx, ebx
+        mov bl, al  ; some trickery to multiply everything
+        pop eax      ; get the multiplier
+        push eax
+
+        push edx
+        mul ebx
+        pop edx
+
+        add edx, eax
+
+        pop eax
+        shl eax, 4   ; multiply by 16
+
+        dec cx
+        jcxz .done
+        jmp .convert_char
+
+    .done:
+        cld
+        pop si
+        pop cx
+        pop ebx
+        pop eax
+        ret
+
     DEC_WORD_STRING_TO_NUM: ; DS:SI - string pointer, DX - result
-        push ax             ; This implementation is a little janky,
+        push ax             ; This implementation is not the best
         push bx             ; gonna have to rewrite it later
         push cx
         push si
@@ -113,7 +174,7 @@
         pop ax
         ret
 
-    BOOL_STRING_TO_NUM ; DS:SI - string pointer, DL - result
+    BOOL_STRING_TO_NUM: ; DS:SI - string pointer, DL - result
         push cx
         push si
         push di
@@ -156,8 +217,14 @@
         je .dot
         cmp al, 0
         je .string_end
+        cmp al, 0x61
+        jb .skip_char
+        cmp al, 0x7a
+        jg .skip_char
 
         sub al, 32  ; convert to upper case
+
+    .skip_char:
         stosb
         inc cx
 

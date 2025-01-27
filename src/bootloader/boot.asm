@@ -32,15 +32,37 @@ BPB_Heads                   dw 32
 BPB_HiddenSectors           dd 0
 BPB_LargeSecCnt             dd 1048576
 
+%ifndef FAT32
+
 EBR_BootDrvNumber           db 99
                             db 0
 EBR_Signature               db 0x29
 EBR_VolumeId                db 0xFF, 0xFF,0xFF, 0xFF
-EBR_VolumeLbl               db "NO NAME "
-EBR_SysId                   db "FAT16   "
+EBR_VolumeLbl               db "NO NAME    "
+EBR_SysId                   db "FAT16  "
+
+%else
+
+BPB_FatSz32                 dd 0
+BPB_ExtFlags                dw 0
+BPB_FSver                   dw 0
+BPB_RootClus                dd 0
+BPB_FSinfo                  dw 0
+BPB_BkBootSec               dw 0
+
+BPB_Reserved       times 12 db 0
+EBR_BootDrvNumber           db 0
+                            db 0
+EBR_Signature               db 0x29
+EBR_VolumeId                db 0xFF, 0xFF,0xFF, 0xFF
+EBR_VolumeLbl               db "NO NAME    "
+EBR_SysId                   db "FAT32  "
+
+%endif
+
 
 [CPU 386]
-[SECTION .text]
+[section .text]
     BOOT_START:
         xor ax, ax
         mov es, ax
@@ -67,7 +89,8 @@ EBR_SysId                   db "FAT16   "
         mov [BPB_SecPerTrack], cx
 
         mov ax, [BPB_SecPerFat]
-        mov bx, [BPB_FatNum]
+        xor bh, bh
+        mov bl, [BPB_FatNum]
         mul bx
         add ax, [BPB_RsvdSecCnt]
         push ax
@@ -82,6 +105,8 @@ EBR_SysId                   db "FAT16   "
         add ax, bx
         mov [DATA_START_SEC], ax
 
+%ifndef FAT32
+
     LOAD_ROOT_DIR:
         mov al, [BPB_FatNum]
         xor ah, ah
@@ -91,7 +116,7 @@ EBR_SysId                   db "FAT16   "
 
         push ax ;Root dir start sector
         
-        mov ax, [BPB_RootEntCnt],
+        mov ax, [BPB_RootEntCnt]
         shl ax, 5
         xor dx, dx
         div word[BPB_BytesPerSec]
@@ -100,25 +125,48 @@ EBR_SysId                   db "FAT16   "
         jz .done 
         inc ax
 
+%else
+
+    LOAD_ROOT_DIR:
+        mov al, [BPB_FatNum]
+        xor ah, ah
+        mov bx, [BPB_SecPerFat]
+        mul bx
+        add ax, [BPB_RsvdSecCnt]
+
+        push ax ;Root dir start sector
+        
+        mov ax, [BPB_RootEntCnt]
+        shl ax, 5
+        xor dx, dx
+        div word[BPB_BytesPerSec]
+
+        test dx, dx
+        jz .done 
+        inc ax
+
+%endif
+
     .done:
-        mov cx, ax ;AX - root dir sector count 
+        mov cx, ax ; AX - root dir sector count 
         pop ax
-        mov bx, BUFFER
+        mov bx, BUFFER_POINTER
         call READ_LBA
 
     LOAD_STAGE2:
         mov ax, word[BPB_RootEntCnt]
         mov si, BOOT_DIR
-        mov di, BUFFER
+        mov di, BUFFER_POINTER
         call SEARCH_DIR
 
         xor dx, dx
         mov ax, word[BPB_BytesPerSec]
-        mov bx, BUFFER
+        mov bx, BUFFER_POINTER
         add bx, ax                  ; This offset is needed, because the FAT already occupies the first 512 bytes of the buffer space
-        
+
         call LOAD_DIR_ENTRY
-        mov ax, 32                   ; MUST BE PROPERLY CALCULATED INSTEAD OF BEING HARD CODED
+
+        mov ax, 0xffff
         mov si, STAGE2_FILE
         mov di, bx
         call SEARCH_DIR
@@ -126,11 +174,43 @@ EBR_SysId                   db "FAT16   "
         mov dx, STAGE2_SEG
         mov bx, STAGE2_OFF
         call LOAD_DIR_ENTRY
-        
+
         mov dl, byte[EBR_BootDrvNumber]
         mov ax, STAGE2_SEG
         mov ds, ax
+
         jmp STAGE2_SEG:STAGE2_OFF
+
+%ifndef FAT32
+    SEARCH_DIR: ; DS:SI - pointer to name string, ES:DI - pointer to directory, AX - number of entries to check
+        pusha
+        xor bx, bx
+
+    .loop:
+        mov cx, 11
+        push si
+        push di
+        repe cmpsb
+        pop di
+        pop si
+
+        je .found
+        inc bx
+
+        add di, 32
+        cmp bx, ax
+        jb .loop
+
+        jmp CRIT_ERROR
+        
+    .found: ;directory entry pointer is in DI register
+        mov ax, [di + 26]
+        mov [FILE_CLUSTER], ax
+
+        popa
+        ret
+
+%else
 
     SEARCH_DIR: ; DS:SI - pointer to name string, ES:DI - pointer to directory, AX - number of entries to check
         pusha
@@ -146,32 +226,85 @@ EBR_SysId                   db "FAT16   "
 
         je .found
         inc bx
+
         add di, 32
         cmp bx, ax
-        jl .loop
+        jb .loop
 
         jmp CRIT_ERROR
         
     .found: ;directory entry pointer is in DI register
         mov ax, [di + 26]
-        mov [FILE_CLUSTER], ax
+        mov word[FILE_CLUSTER + 2], ax
+        mov ax, [di + 20]
+        mov word[FILE_CLUSTER], ax
 
         popa
         ret
 
-;for FAT16
-%ifndef FAT12
+%endif
+
+%ifdef FAT32
 
     LOAD_DIR_ENTRY: ; FILE_CLUSTER - first cluster of a directory entry, DX:BX - load adress
         pusha
         push es
-        push dx
+        mov es, dx
 
-        .loop:
-        pop ax
-        mov es, ax
-        push ax
+    .loop:
+        xor ecx, ecx
+        mov cl, byte[BPB_SecPerClus]
+        mov eax, dword[FILE_CLUSTER]
+        sub eax, 2
+        mul ecx
+        add ax, word[DATA_START_SEC]
 
+        call READ_LBA
+
+        mov ax, word[BPB_BytesPerSec]
+        xor dh, dh
+        mov dl, byte[BPB_SecPerClus]
+        mul dx
+        add bx, ax
+
+    .read_fat:
+        xor edx, edx
+        mov eax, dword[FILE_CLUSTER]
+        shl ax, 2
+        mov cx, word[BPB_BytesPerSec]
+        div ecx
+        mov cx, word[BPB_RsvdSecCnt]
+        add eax, ecx
+        mov cx, 1
+
+        call READ_LBA
+
+        add dx, bx
+        mov si, dx
+        mov eax, dword[es:si]
+        and eax, 0x0FFFFFFF
+
+        cmp eax, 0x0FFFFFF8
+        jae .done
+
+        mov dword[FILE_CLUSTER], eax
+        jmp .loop
+
+    .done:
+        pop es
+        popa
+        ret
+
+%endif
+
+%ifdef FAT16
+
+    LOAD_DIR_ENTRY: ; FILE_CLUSTER - first cluster of a directory entry, DX:BX - load adress
+        pusha
+        push es
+        mov es, dx
+
+    .loop:
         xor ch, ch
         mov cl, byte[BPB_SecPerClus]
         mov ax, word[FILE_CLUSTER]
@@ -186,46 +319,59 @@ EBR_SysId                   db "FAT16   "
         mov dl, byte[BPB_SecPerClus]
         mul dx
         add bx, ax
+
+    .read_fat:
+        push es
         push bx
 
         xor dx, dx
         mov ax, word[FILE_CLUSTER]
         shl ax, 1
-        mov bx, word[BPB_BytesPerSec]
-        div bx
+        div word[BPB_BytesPerSec]
         add ax, word[BPB_RsvdSecCnt]
-        mov bx, BUFFER_SEG
-        mov es, bx
-        xor bx, bx
         mov cx, 1
 
-        call READ_LBA
+        mov bx, BOOTLOADER_SEG
+        mov es, BX
+        mov bx, FAT_SECTOR_BUFFER_POINTER
 
+        cmp ax, word[PREVIOUS_FAT_SECTOR]
+        je .skip
+
+        call READ_LBA
+        mov word[PREVIOUS_FAT_SECTOR], ax
+
+    .skip:
+
+        add dx, bx
         mov si, dx
         mov ax, word[es:si]
 
     .after_next_clus:
-        cmp ax, 0xFFF8
         pop bx
+        pop es
+
+        cmp ax, 0xFFF8
         jae .done
 
         mov word[FILE_CLUSTER], ax
         jmp .loop
 
     .done:
-        pop dx
         pop es
         popa
         ret
 
 %endif
 
-;for FAT12
 %ifdef FAT12
 
     LOAD_DIR_ENTRY: ; FILE_CLUSTER - first clustetr of a directory entry, DX:BX - load adress
         pusha
+        push es
+        mov es, dx
 
+    .loop:
         xor ch, ch
         mov cl, byte[BPB_SecPerClus]
         mov ax, word[FILE_CLUSTER]
@@ -234,8 +380,63 @@ EBR_SysId                   db "FAT16   "
         add ax, [DATA_START_SEC]
 
         call READ_LBA
-        
+
+        mov ax, word[BPB_BytesPerSec]
+        xor dh, dh
+        mov dl, byte[BPB_SecPerClus]
+        mul dx
+        add bx, ax
+
+    .read_fat:
+        push es
+        push bx
+
+        mov ax, word[FILE_CLUSTER]
+        mov dx, ax
+        shr ax, 1
+        add ax, dx
+        xor dx, dx
+        div word[BPB_BytesPerSec]
+        add ax, word[BPB_RsvdSecCnt]
+        mov cx, 1
+
+        mov bx, BOOTLOADER_SEG
+        mov es, BX
+        mov bx, FAT_SECTOR_BUFFER_POINTER
+
+        cmp ax, word[PREVIOUS_FAT_SECTOR]
+        je .skip
+
+        call READ_LBA
+        mov word[PREVIOUS_FAT_SECTOR], ax
+
+    .skip:
+        add dx, bx
+        mov si, dx
+        mov ax, word[es:si]
+
+        test word[FILE_CLUSTER], 1
+        jz .even
+
+    .odd:
+        shr ax, 4
+        jmp .after_next_clus
+
+    .even:
+        and ax, 0xfff
+
+    .after_next_clus:
+        pop bx
+        pop es
+
+        cmp ax, 0xff8
+        jae .done
+
+        mov word[FILE_CLUSTER], ax
+        jmp .loop
+
     .done:
+        pop es
         popa
         ret
 %endif
@@ -280,23 +481,28 @@ EBR_SysId                   db "FAT16   "
         ret
 
     CRIT_ERROR:
-        xor ah, ah
-        int 16h
-        jmp 0xffff:0
+        cli
+        hlt
 
+%ifndef FAT32
+FILE_CLUSTER                dd 0
+%else
 FILE_CLUSTER                dw 0
+%endif
+
 DATA_START_SEC              dw 0
+PREVIOUS_FAT_SECTOR         dw 0
 
 BOOT_DIR                    db "BOOT       "
 STAGE2_FILE                 db "LOADER  BIN"
 
-RETC                        equ 0x0D
-ENDL                        equ 0x0A
-BUFFER_SEG                  equ 0x07e0
+BOOTLOADER_SEG              equ 0x0000
+
+FAT_SECTOR_BUFFER_POINTER   equ BUFFER
+BUFFER_POINTER              equ BUFFER + 512
 
 STAGE2_SEG                  equ 0x0800
 STAGE2_OFF                  equ 0
-STAGE2_SIGNATURE            equ 0xBADF
 
 times 510-($-$$) db 0
 dw 0xaa55
