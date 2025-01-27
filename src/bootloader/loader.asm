@@ -26,7 +26,8 @@
 
     FAT_SECTOR_BUFFER_POINTER                           equ         BUFFER
 
-    BOOTLOADER_SEG                                      equ         0x0000
+    BOOTLOADER_DS                                       equ         0x0000
+    BOOTLOADER_CS                                       equ         0x0800
 
     ; no memory manager so the spcae for the mbr has to preallocated here
     ; all the values are placeholders and get overwritten
@@ -86,15 +87,14 @@ DISK_MBR_END:
 
     LBA_READ_ERROR_MSG                                  db          "Could not read LBA from disk: ", 0
     FILE_NOT_FOUND_ERROR_MSG                            db          "Could not find file", ENDL, RETC, 0
-    
     DRIVE_INIT_ERROR_MSG                                db          "Drive initialization error", ENDL, RETC, 0
-
     DRIVE_NOT_READY_ERROR_MS                            db          "Drive not ready", ENDL, RETC, 0
     INVALID_COMMAND_ERROR_MSG                           db          "Invalid command", ENDL, RETC, 0
     SECOTR_NOT_FOUND_ERROR_MSG                          db          "Secotor not found", ENDL, RETC, 0
     INVALID_SECTOR_COUNT_ERROR_MSG                      db          "Invalid secotr count", ENDL, RETC, 0
     SEEK_FAILURE_ERROR_MSG                              db          "Seek failure", ENDL, RETC, 0
     CONTROLLER_FAILURE_ERROR_MSG                        db          "Controller failure", ENDL, RETC, 0
+    UNDEFINED_ERROR_MSG                                 db          "Undefined error", ENDL, RETC, 0
 
     LOADING_MSG                                         db          "Loading.....", 0
     
@@ -200,7 +200,7 @@ VAR_TABLE_START:
 VAR_TABLE_END:                                          dw          VAR_TABLE_TERMINATOR
 
 ; Unreal mode GDT
-UNREAL_GDT_START:
+UNREAL_PMODE_GDT_START:
     dq 0x0
 
 UNREAL_CODESC:
@@ -209,19 +209,19 @@ UNREAL_CODESC:
 UNREAL_FLATSC:
     db 0xff, 0xff, 0, 0, 0, 10010010b, 11001111b, 0
 
-UNREAL_GDT_END:
+UNREAL_PMODE_GDT_END:
 
-UNREAL_GDT_DESCRIPTOR:
-    dw UNREAL_GDT_END - UNREAL_GDT_START - 1
-    dd UNREAL_GDT_START
+UNREAL_PMODE_GDT_DESCRIPTOR:
+    dw UNREAL_PMODE_GDT_END - UNREAL_PMODE_GDT_START - 1
+    dd UNREAL_PMODE_GDT_START
 
-CODE_SEG                                            equ         GDT_CODE - GDT_START
-DATA_SEG                                            equ         GDT_DATA - GDT_START
+PMODE_CODE_SEG                                            equ         PMODE_GDT_CODE - PMODE_GDT_START
+PMODE_DATA_SEG                                            equ         PMODE_GDT_DATA - PMODE_GDT_START
 
-GDT_START:
+PMODE_GDT_START:
     dq 0x0
 
-GDT_CODE:
+PMODE_GDT_CODE:
     dw 0xffff    ; segment length, bits 0-15
     dw 0x0       ; segment base, bits 0-15
     db 0x0       ; segment base, bits 16-23
@@ -230,7 +230,7 @@ GDT_CODE:
     db 0x0       ; segment base, bits 24-31
 
 ; data segment descriptor
-GDT_DATA:
+PMODE_GDT_DATA:
     dw 0xffff    ; segment length, bits 0-15
     dw 0x0       ; segment base, bits 0-15
     db 0x0       ; segment base, bits 16-23
@@ -238,12 +238,12 @@ GDT_DATA:
     db 11001111b ; flags (4 bits) + segment length, bits 16-19
     db 0x0       ; segment base, bits 24-31
 
-GDT_END:
+PMODE_GDT_END:
 
-GDT_DESCRIPTOR:
+PMODE_GDT_DESCRIPTOR:
 
-    dw GDT_END - GDT_START - 1 ; size (16 bit)
-    dd GDT_START ; address (32 bit)
+    dw PMODE_GDT_END - PMODE_GDT_START - 1 ; size (16 bit)
+    dd PMODE_GDT_START ; address (32 bit)
 
     CONFIG_LINE_BUFFER  times 128                       db          0
     CONFIG_VAR_NAME_BUFFER times 32                     db          0
@@ -272,33 +272,10 @@ GDT_DESCRIPTOR:
 
         call ENABLE_A20
 
-        ; Switch to unreal mode
-        cli
-        push ds
+        push BOOTLOADER_CS
+        call INIT_UNREAL
 
-        lgdt [UNREAL_GDT_DESCRIPTOR]
-
-        mov  eax, cr0          ; switch to pmode by
-        or al, 1                ; set pmode bit
-        mov  cr0, eax
-        jmp 0x8:.pmode
-
-    .pmode:
-        mov  bx, 0x10          ; select descriptor 2
-        mov  ds, bx            ; 10h = 10000b
-
-        and al, 0xfe            ; back to realmode
-        mov  cr0, eax          ; by toggling bit again
-        jmp 0x0:.unreal
-
-    .unreal:
-        pop ds
-        sti
-
-        mov ax, 0x0003      ; reset the video mode to 80 x 25 text
-        int 10h
-
-    .boot_init_start:
+        call INIT_SCRREEN
 
         ; Reading the config file
         mov dx, ds
@@ -412,11 +389,8 @@ GDT_DESCRIPTOR:
 
         mov si, ax
         call PRINT
-        mov ah, 0x0e
-        mov al, ENDL
-        int 10h
-        mov al, RETC
-        int 10h
+        mov cx, 1
+        call NEWLINE
 
         add si, 128
         mov dx, word[ds:si] ; keeping load segment in the AX regidter
@@ -467,16 +441,16 @@ GDT_DESCRIPTOR:
 
     .init_32:
         cli
-        lgdt [GDT_DESCRIPTOR]
+        lgdt [PMODE_GDT_DESCRIPTOR]
         mov eax, cr0
         or eax, 0x1
         mov cr0, eax
 
-        jmp dword CODE_SEG:.init_pmode
+        jmp dword PMODE_CODE_SEG:.init_pmode
 
 [bits 32]
     .init_pmode:
-        mov ax, DATA_SEG
+        mov ax, PMODE_DATA_SEG
         mov ds, ax
         mov ss, ax
         mov es, ax
@@ -540,12 +514,10 @@ GDT_DESCRIPTOR:
         call PRINT
         pop si
 
-        mov al, RETC
-        int 10h
-        int 10h 
-        mov al, ENDL
-        int 10h 
-        int 10h
+        push cx
+        mov cx, 2
+        call NEWLINE
+        pop cx
 
         add si, KERNEL_ENTRY_SIZE
         dec cx
@@ -868,6 +840,7 @@ GDT_DESCRIPTOR:
         popad
         ret
 
+%include "unreal.asm"
 %include "error.asm"
 %include "diskio.asm"
 %include "pcspk.asm"

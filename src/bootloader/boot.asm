@@ -331,7 +331,7 @@ EBR_SysId                   db "FAT32  "
         add ax, word[BPB_RsvdSecCnt]
         mov cx, 1
 
-        mov bx, BOOTLOADER_SEG
+        mov bx, BOOTLOADER_DS
         mov es, BX
         mov bx, FAT_SECTOR_BUFFER_POINTER
 
@@ -400,7 +400,7 @@ EBR_SysId                   db "FAT32  "
         add ax, word[BPB_RsvdSecCnt]
         mov cx, 1
 
-        mov bx, BOOTLOADER_SEG
+        mov bx, BOOTLOADER_DS
         mov es, BX
         mov bx, FAT_SECTOR_BUFFER_POINTER
 
@@ -496,7 +496,7 @@ PREVIOUS_FAT_SECTOR         dw 0
 BOOT_DIR                    db "BOOT       "
 STAGE2_FILE                 db "LOADER  BIN"
 
-BOOTLOADER_SEG              equ 0x0000
+BOOTLOADER_DS              equ 0x0000
 
 FAT_SECTOR_BUFFER_POINTER   equ BUFFER
 BUFFER_POINTER              equ BUFFER + 512

@@ -114,6 +114,7 @@
         je .drive_not_ready
         cmp al, 0xaa
         je .drive_not_ready
+        jmp .undefined
 
     .invalid_command:
         mov si, INVALID_COMMAND_ERROR_MSG
@@ -137,6 +138,10 @@
 
     .drive_not_ready:
         mov si, DRIVE_NOT_READY_ERROR_MS
+        jmp .print_error
+
+    .undefined:
+        mov si, UNDEFINED_ERROR_MSG
         
     .print_error
         call PRINT

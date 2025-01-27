@@ -1,5 +1,11 @@
 [bits 16]
 [section .text]
+    INIT_SCRREEN:
+        mov ax, 0x0003
+        int 10h
+        
+        ret
+
     PRINT:
         pusha
         mov ah, 0x0e
@@ -121,6 +127,23 @@
         int 10h
         mov al, RETC
         int 10h
+
+    .done:
+        popa
+        ret
+
+    NEWLINE: ; CX - new line count
+        pusha
+        mov ah, 0x0e
+        
+    .loop:
+        jcxz .done
+        mov al, ENDL
+        int 10h
+        mov al, RETC
+        int 10h
+        dec cx
+        jmp .loop
 
     .done:
         popa
