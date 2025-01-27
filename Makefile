@@ -61,7 +61,6 @@ image: boot_FAT16 boot_stage2 kernel
 	@$(MCOPY) -i $(BUILD_DIR)/$(DISK_IMAGE) $(UTIL_DIR)/* ::/boot
 	@$(MCOPY) -i $(BUILD_DIR)/$(DISK_IMAGE) $(CONFIG_DIR)/banner.txt ::/boot
 	@$(MCOPY) -i $(BUILD_DIR)/$(DISK_IMAGE) $(BUILD_DIR)/kernel.bin ::/boot/kernels
-	@$(MCOPY) -i $(BUILD_DIR)/$(DISK_IMAGE) /home/dann/Desktop/oldkr.bin ::/boot/kernels
 	@$(DD) if=$(BUILD_DIR)/$(DISK_IMAGE) of=$(BUILD_DIR)/boot.bin skip=3 seek=3 count=56 iflag=skip_bytes,count_bytes status=none oflag=seek_bytes conv=notrunc
 	@$(DD) if=$(BUILD_DIR)/boot.bin of=$(BUILD_DIR)/$(DISK_IMAGE) conv=notrunc status=none
 
@@ -76,7 +75,6 @@ image_fat32: boot_FAT32 boot_stage2 kernel
 	@$(MCOPY) -i $(BUILD_DIR)/$(DISK_IMAGE) $(UTIL_DIR)/* ::/boot
 	@$(MCOPY) -i $(BUILD_DIR)/$(DISK_IMAGE) $(CONFIG_DIR)/banner.txt ::/boot
 	@$(MCOPY) -i $(BUILD_DIR)/$(DISK_IMAGE) $(BUILD_DIR)/kernel.bin ::/boot/kernels
-	@$(MCOPY) -i $(BUILD_DIR)/$(DISK_IMAGE) /home/dann/Desktop/oldkr.bin ::/boot/kernels
 	@$(DD) if=$(BUILD_DIR)/$(DISK_IMAGE) of=$(BUILD_DIR)/boot.bin skip=3 seek=3 count=56 iflag=skip_bytes,count_bytes status=none oflag=seek_bytes conv=notrunc
 	@$(DD) if=$(BUILD_DIR)/boot.bin of=$(BUILD_DIR)/$(DISK_IMAGE) conv=notrunc status=none
 
@@ -91,7 +89,6 @@ image_floppy: boot_FAT12 boot_stage2 kernel
 	@$(MCOPY) -i $(BUILD_DIR)/$(FLOPPY_IMAGE) $(UTIL_DIR)/* ::/boot
 	@$(MCOPY) -i $(BUILD_DIR)/$(FLOPPY_IMAGE) $(CONFIG_DIR)/banner.txt ::/boot
 	@$(MCOPY) -i $(BUILD_DIR)/$(FLOPPY_IMAGE) $(BUILD_DIR)/kernel.bin ::/boot/kernels
-	@$(MCOPY) -i $(BUILD_DIR)/$(FLOPPY_IMAGE) /home/dann/Desktop/oldkr.bin ::/boot/kernels
 	@$(DD) if=$(BUILD_DIR)/$(FLOPPY_IMAGE) of=$(BUILD_DIR)/boot.bin skip=3 seek=3 count=56 iflag=skip_bytes,count_bytes status=none oflag=seek_bytes conv=notrunc
 	@$(DD) if=$(BUILD_DIR)/boot.bin of=$(BUILD_DIR)/$(FLOPPY_IMAGE) conv=notrunc status=none
 
