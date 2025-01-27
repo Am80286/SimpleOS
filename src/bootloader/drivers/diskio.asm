@@ -1,10 +1,13 @@
 [bits 16]
-[SECTION .text]
+[section .data]
+    READ_LBA_LOW_BUFFER_SEG                             equ         0x1000
+
+[section .text]
     READ_LBA_EXTENDED: ; same as READ_LBA, but can read into extended memory (uses unreal mode)
-        pusha
-        push cx ; CX - amount of sectors to read
-        push ax ; AX - LBA 
-                ; 0:EBX - buffer
+        pushad
+        push cx  ; CX - amount of sectors to read
+        push ebx ; ES:EBX - buffer
+        push ax  ; AX - LBA 
 
         mov ax, word[BPB_Heads]
         mul word[BPB_SecPerTrack]
@@ -27,15 +30,36 @@
         pop bx  
         mov ch, bl ; CH - cylinder
 
+        pop edi
         pop ax
+
+        push es
+        mov bx, READ_LBA_LOW_BUFFER_SEG
+        mov es, bx
+        xor bx, bx
         mov ah, 0x02
         mov dl, [BOOT_DISK]
-        
+
         int 13h
-        jc CRIT_ERROR
+        jc LBA_READ_ERROR
+        pop es
+
+        mov esi, READ_LBA_LOW_BUFFER_SEG
+        shl esi, 4
+
+        xor ebx, ebx
+        mov bl, al
+        xor eax, eax
+        mov ax, word[BPB_BytesPerSec]
+        mul ebx
+        shr eax, 2
+        mov ecx, eax
+
+        db 0x67 ; adress sie override prefix
+        rep movsd
 
     .done:
-        popa
+        popad
         ret
 
     READ_LBA:
@@ -71,7 +95,7 @@
         mov dl, [BOOT_DISK]
         
         int 13h
-        jc CRIT_ERROR
+        jc LBA_READ_ERROR
 
     .done:
         popa

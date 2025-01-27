@@ -12,20 +12,21 @@
 ;    If not, see <https://www.gnu.org/licenses/>. 
 
 [org 0x8000]
-[SECTION .data]
+[section .data]
     RETC                                                equ         0x0D
     ENDL                                                equ         0x0A
 
     VAR_TABLE_TERMINATOR                                equ         0xFC88
 
     KERNEL_TABLE_TERMINATOR                             equ         0xFC99
-    KERNEL_ENTRY_SIZE                                   equ         135     ; TODO: make auto detection for this value
+    KERNEL_ENTRY_SIZE                                   equ         139     ; TODO: make auto detection for this value
     KERNEL_ENTRY_SIG                                    equ         0
 
-    BUFFER_SEG                                          equ         0x0200
+    CONFIG_FILE_POINTER                                 equ         BUFFER + 512 ; +512 because this is a buffer for FAT sectors
 
-    CODE_SEG                                            equ         GDT_CODE - GDT_START
-    DATA_SEG                                            equ         GDT_DATA - GDT_START
+    FAT_SECTOR_BUFFER_POINTER                           equ         BUFFER
+
+    BOOTLOADER_SEG                                      equ         0x0000
 
     ; no memory manager so the spcae for the mbr has to preallocated here
     ; all the values are placeholders and get overwritten
@@ -39,13 +40,13 @@ DISK_MBR_START:
     BPB_RsvdSecCnt                                      dw          16
     BPB_FatNum                                          db          2
     BPB_RootEntCnt                                      dw          512
-    BPB_TotalSecCnt                                     dw          0
+    BPB_TotalSecCnt16                                   dw          0
     BPB_Media_Desc_Type                                 db          0xf8
     BPB_SecPerFat                                       dw          256
     BPB_SecPerTrack                                     dw          63
     BPB_Heads                                           dw          32
     BPB_HiddenSectors                                   dd          0
-    BPB_LargeSecCnt                                     dd          1048576
+    BPB_TotSecCnt32                                     dd          1048576
 
     EBR_BootDrvNumber                                   db          0
                                                         db          0
@@ -64,24 +65,61 @@ DISK_MBR_END:
 
     BANNER                                              db          "-================================-", " SimpleBoot ", "-======================= ", "v0.1", " ===-", 0
     HEX_OUT                                             db          "0000h", 0
-    CRIT_ERROR_MSG                                      db          "Critical error encountered!", RETC, ENDL, "Can't continue...", ENDL, RETC, "Press any key to reboot", ENDL, RETC, 0
+    CRIT_ERROR_MSG                                      db          "Critical error encountered!", RETC, ENDL, "Can't continue...", ENDL, RETC, 0
+    ANY_KEY_TO_REBOOT_MSG                               db          ENDL, RETC, "Press any key to reboot...", ENDL, RETC, 0
     BOOT_MENU_MSG                                       db          ENDL, RETC, "  Available Kernels:", ENDL, RETC, ENDL, RETC, 0
     INVALID_INPUT_MSG                                   db          "Invald input!", 0
     BOOTING_KERNEL_MSG                                  db          "Booting selected kernel...", 0
     KENREL_PATH_MSG                                     db          ENDL, RETC, "  Path: ", 0
+    CRASH_DUMP_MSG                                      db          ENDL, RETC, "Crash Dump: ", ENDL, RETC, ENDL, RETC, 0
+    AX_MSG                                              db          "AX: ", 0
+    BX_MSG                                              db          "BX: ", 0
+    CX_MSG                                              db          "CX: ", 0
+    DX_MSG                                              db          "DX: ", 0
+    SI_MSG                                              db          "SI: ", 0
+    DI_MSG                                              db          "DI: ", 0
+    CS_MSG                                              db          "CS: ", 0
+    DS_MSG                                              db          ENDL, RETC, "DS: ", 0
+    ES_MSG                                              db          "ES: ", 0
+    SP_MSG                                              db          ENDL, RETC, "SP: ", 0
+    BP_MSG                                              db          "BP: ", 0
+
+    LBA_READ_ERROR_MSG                                  db          "Could not read LBA from disk: ", 0
+    FILE_NOT_FOUND_ERROR_MSG                            db          "Could not find file", ENDL, RETC, 0
     
+    DRIVE_INIT_ERROR_MSG                                db          "Drive initialization error", ENDL, RETC, 0
+
+    DRIVE_NOT_READY_ERROR_MS                            db          "Drive not ready", ENDL, RETC, 0
+    INVALID_COMMAND_ERROR_MSG                           db          "Invalid command", ENDL, RETC, 0
+    SECOTR_NOT_FOUND_ERROR_MSG                          db          "Secotor not found", ENDL, RETC, 0
+    INVALID_SECTOR_COUNT_ERROR_MSG                      db          "Invalid secotr count", ENDL, RETC, 0
+    SEEK_FAILURE_ERROR_MSG                              db          "Seek failure", ENDL, RETC, 0
+    CONTROLLER_FAILURE_ERROR_MSG                        db          "Controller failure", ENDL, RETC, 0
+
+    LOADING_MSG                                         db          "Loading.....", 0
+    
+    CONFIG_MENU_ENTRY_DECLARATOR                        db          "menu_entry_start:"
+    CONFIG_BOOL_TRUE                                    db          "true"
+    CONFIG_BOOL_FALSE                                   db          "false"
+
     BOOT_DISK                                           db          0
     BOOT_CONFIG_FILE_PATH                               db          "boot/boot.cfg", 0
     BOOT_BANNER_FILE_PATH times 64                      db          0
 
+    PREVIOUS_FAT_SECTOR                                 dw          0
     DISK_DATA_START_SEC                                 dw          0
+    FILE_SIZE                                           dd          0
+    FILE_CLUSTER                                        dw          0
+
+    ; A variable that describes the filesystem type
+    ; 0x01 - FAT 12
+    ; 0x02 - FAT 16
+    ; 0x03 - FAT 32
+
+    DISK_FS_TYPE                                        db          0
 
     KERNEL_TABLE_POINTER                                dw          0
     KERNEL_ENTRY_COUNTER                                dw          0
-
-    CONFIG_MENU_ENTRY_DECLARATOR                        db          "menu_entry_start:"
-    CONFIG_BOOL_TRUE                                    db          "true"
-    CONFIG_BOOL_FALSE                                   db          "false"
 
 ; Variable types:
 ; 0x01 - hex word
@@ -90,8 +128,9 @@ DISK_MBR_END:
 ; 0x04 - dec byte
 ; 0x05 - string
 ; 0x06 - bool
+; 0x07 - hex dword
 
- ;Kernel entry structure: size 135 bytes
+ ;Kernel entry structure: size 139 bytes
 
 ; KERNEL_NAME times 64                              db          0
 ; KERNEL_PATH times 64                              db          0
@@ -100,6 +139,7 @@ DISK_MBR_END:
 ; KENREL_PROTECTED_MODE                             db          0 bool
 ; KERNEL_LINUX16                                    db          0 bool
 ; KERNEL_DEFAULT                                    db          0 bool
+; KENREL_LOAD_ADDR                                  dd          0
 
 VAR_TABLE_CURRENT_POINTER                               dw          VAR_TABLE_START
 
@@ -145,6 +185,10 @@ VAR_TABLE_START:
     VAR_KERNEL_LINUX_16_TYPE                            db          0x06
     VAR_KERNEL_LINUX_16_POINTER                         dw          0
 
+    VAR_KERNEL_LOAD_ADDR_NAME                           db          "load_addr", 0
+    VAR_KERNEL_LOAD_ADDR_TYPE                           db          0x07
+    VAR_KENREL_LOAD_ADDR_POINTER                        dw          0
+
     VAR_BOOT_BEEP_ENABLE_NAME                           db          "boot_beep_enable", 0
     VAR_BOOT_BEEP_TYPE                                  db          0x06
     VAR_BOOT_BEEP_POINTER                               dw          BOOT_BEEP_ENABLE
@@ -171,6 +215,8 @@ UNREAL_GDT_DESCRIPTOR:
     dw UNREAL_GDT_END - UNREAL_GDT_START - 1
     dd UNREAL_GDT_START
 
+CODE_SEG                                            equ         GDT_CODE - GDT_START
+DATA_SEG                                            equ         GDT_DATA - GDT_START
 
 GDT_START:
     dq 0x0
@@ -199,7 +245,7 @@ GDT_DESCRIPTOR:
     dw GDT_END - GDT_START - 1 ; size (16 bit)
     dd GDT_START ; address (32 bit)
 
-    CONFIG_LINE_BUFFER  times 96                        db          0
+    CONFIG_LINE_BUFFER  times 128                       db          0
     CONFIG_VAR_NAME_BUFFER times 32                     db          0
     CONFIG_VAR_STRING_VAL_BUFFER times 64               db          0
 
@@ -210,7 +256,7 @@ GDT_DESCRIPTOR:
 
 [bits 16]
 [CPU 386]
-[SECTION .text]
+[section .text]
     BOOT_START:
         xor ax, ax
         mov es, ax
@@ -219,12 +265,14 @@ GDT_DESCRIPTOR:
 
         mov byte[BOOT_DISK], dl
 
+        mov al, dl      ; For debugging
+        out 0x80, al    ; Outputs the boot disk number to the POST port
+
         call INIT_BOOT_DISK
 
-        mov ax, 0x0003      ; reset the video mode to 80 x 25 text
-        int 10h
+        call ENABLE_A20
 
-        ; switch to unreal mode
+        ; Switch to unreal mode
         cli
         push ds
 
@@ -247,13 +295,17 @@ GDT_DESCRIPTOR:
         pop ds
         sti
 
-        ;reading the config file
+        mov ax, 0x0003      ; reset the video mode to 80 x 25 text
+        int 10h
+
+    .boot_init_start:
+
+        ; Reading the config file
         mov dx, ds
-        mov bx, BUFFER
-        add bx, word[BPB_BytesPerSec] ; cause the FAT is gonna be in the first 512 bytes of the buffer
+        mov bx, CONFIG_FILE_POINTER
         mov si, BOOT_CONFIG_FILE_PATH
 
-        call READ_FILE_BY_PATH
+        call LOAD_FILE_BY_PATH
 
         call KERNEL_TABLE_INIT
 
@@ -268,16 +320,15 @@ GDT_DESCRIPTOR:
         cmp word[BOOT_BANNER_FILE_PATH], 0
         je .default_banner
 
-        ; custom banner
+    .custom_banner:
         mov bx, word[KERNEL_TABLE_POINTER]
-        add bx, word[BPB_BytesPerSec] ; cause the FAT is gonna be in the first 512 bytes of the buffer
         mov ax, word[KERNEL_ENTRY_COUNTER]
         mov cx, KERNEL_ENTRY_SIZE
         mul cx
         add bx, ax
         mov dx, ds
         mov si, BOOT_BANNER_FILE_PATH
-        call READ_FILE_BY_PATH
+        call LOAD_FILE_BY_PATH
         mov si, bx
         call PRINT_TXT
 
@@ -355,7 +406,18 @@ GDT_DESCRIPTOR:
 
     .load_kernel:
         push ax
+
+        mov si, LOADING_MSG
+        call PRINT
+
         mov si, ax
+        call PRINT
+        mov ah, 0x0e
+        mov al, ENDL
+        int 10h
+        mov al, RETC
+        int 10h
+
         add si, 128
         mov dx, word[ds:si] ; keeping load segment in the AX regidter
         add si, 2
@@ -370,7 +432,7 @@ GDT_DESCRIPTOR:
     ; loading the file and making a jump to the kernel code
         pop si
         add si, 64
-        call READ_FILE_BY_PATH
+        call LOAD_FILE_BY_PATH
         
         push dx ; load kernel segment
         push bx ; load kernel offset
@@ -380,23 +442,37 @@ GDT_DESCRIPTOR:
         
         mov ds, dx
         mov es, dx
-        mov gs, dx
-        mov fs, dx
 
         retf    ; jump to the kernel
     
     .pmode:
+        mov si, word[esp] ; Read the stack without popping 
+
+        add si, 135
+        cmp dword[ds:si], 0
+        je .load_to_low_mem
+
+    ; loading into high memory
+        mov ebx, dword[ds:si]
         pop si
         add si, 64
-        call READ_FILE_BY_PATH
+        call LOAD_FILE_BY_PATH_EXTENDED
+        jmp .init_32
+        
+    .load_to_low_mem:
+        xor ebx, ebx
+        pop si
+        add si, 64
+        call LOAD_FILE_BY_PATH
 
-    INIT_32:
+    .init_32:
         cli
         lgdt [GDT_DESCRIPTOR]
         mov eax, cr0
         or eax, 0x1
         mov cr0, eax
-        jmp CODE_SEG:.init_pmode
+
+        jmp dword CODE_SEG:.init_pmode
 
 [bits 32]
     .init_pmode:
@@ -407,12 +483,20 @@ GDT_DESCRIPTOR:
         mov fs, ax
         mov gs, ax
 
+        test ebx, ebx
+        jnz .loaded_high
+
+        ;loaded low
         xor eax, eax
         mov ax, dx
         shl eax, 4
         add eax, ebx
         
         jmp eax
+
+    .loaded_high:
+
+        jmp ebx
 
 [bits 16]
     BOOT_MENU_INIT: ; probably a good idea to rework the whole alogoritm for placig all spaces, bracets, etc
@@ -476,19 +560,17 @@ GDT_DESCRIPTOR:
         pusha 
 
         mov ax, word[FILE_SIZE]                 ; get the size of the loaded config file
-        add ax, word[BPB_BytesPerSec]
-        add ax, BUFFER
+        add ax, CONFIG_FILE_POINTER
         mov word[KERNEL_TABLE_POINTER], ax
 
         popa
         ret
 
-    BOOT_CONFIG_INIT: ;ES must equal DS
+    BOOT_CONFIG_INIT: ; ES must equal DS
         pusha
 
         mov di, CONFIG_LINE_BUFFER
-        mov si, BUFFER
-        add si, word[BPB_BytesPerSec]
+        mov si, CONFIG_FILE_POINTER
         mov cx, word[FILE_SIZE]
         inc cx
 
@@ -497,6 +579,7 @@ GDT_DESCRIPTOR:
         jcxz .done
 
         lodsb
+
         cmp al, 0x0a
         je .line_end_reached
         cmp al, '#'
@@ -531,7 +614,7 @@ GDT_DESCRIPTOR:
         push si
         mov di, CONFIG_LINE_BUFFER
         mov si, di
-        
+
         call PARSE_CONFIG_LINE
 
     .after_line_parsed:
@@ -611,7 +694,7 @@ GDT_DESCRIPTOR:
         mov di, CONFIG_MENU_ENTRY_DECLARATOR
         mov cx, 17
         push si
-        repe cmpsb
+        repe cmpsb ; comparing the strings using cmpsb
         pop si
         je .menu_entry_decalarator
    
@@ -643,6 +726,9 @@ GDT_DESCRIPTOR:
         inc ax
         mov word[VAR_KERNEL_DEFAULT_POINTER], ax
 
+        inc ax
+        mov word[VAR_KENREL_LOAD_ADDR_POINTER], ax
+
         inc bx
         mov word[KERNEL_ENTRY_COUNTER], bx
 
@@ -651,7 +737,7 @@ GDT_DESCRIPTOR:
         ret
 
     APPLY_CONFIG_VAR: 
-        pusha
+        pushad
     
         mov si, VAR_TABLE_START
         mov word[VAR_TABLE_CURRENT_POINTER], si
@@ -697,6 +783,8 @@ GDT_DESCRIPTOR:
     .found:
         inc si
         lodsb
+        cmp al, 0x07
+        je .apply_hex_dword
         cmp al, 0x06
         je .apply_bool
         cmp al, 0x05
@@ -741,6 +829,15 @@ GDT_DESCRIPTOR:
         jne .write_string_bytes
         jmp .done
 
+    .apply_hex_dword:
+        push si
+        mov si, CONFIG_VAR_STRING_VAL_BUFFER
+        call HEX_DWORD_STRING_TO_NUM
+        pop si
+        mov bx, word[ds:si]         ; not sure if  using lodsw is better
+        mov dword[ds:bx], edx       ; applying the value
+        jmp .done
+
     .apply_hex_word:
         push si
         mov si, CONFIG_VAR_STRING_VAL_BUFFER
@@ -768,23 +865,10 @@ GDT_DESCRIPTOR:
         mov byte[ds:bx], dl         ; applying the value
 
     .done:
-        popa
+        popad
         ret
 
-    CRIT_ERROR:
-        mov si, CRIT_ERROR_MSG
-        call PRINT
-
-        mov ax, 1200
-        mov cx, 0x0003
-        mov dx, 0x0d40
-        call PLAY_PC_SPEAKER_TONE
-        call PLAY_PC_SPEAKER_TONE
-
-        xor ah, ah
-        int 16h
-        jmp 0xffff:0
-
+%include "error.asm"
 %include "diskio.asm"
 %include "pcspk.asm"
 %include "fatfs.asm"
@@ -792,6 +876,7 @@ GDT_DESCRIPTOR:
 %include "gate_a20.asm"
 %include "screen.asm"
 %include "linux16.asm"
+
 ;
 ;
 ;      _____            __    ____  ____
