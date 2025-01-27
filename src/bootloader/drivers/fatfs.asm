@@ -434,7 +434,7 @@
             add ax, word[BPB_RsvdSecCnt]
             mov cx, 1
 
-            mov bx, BOOTLOADER_SEG
+            mov bx, BOOTLOADER_DS
             mov es, bx
             mov bx, FAT_SECTOR_BUFFER_POINTER
 
@@ -470,7 +470,7 @@
             add ax, word[BPB_RsvdSecCnt]
             mov cx, 1
 
-            mov bx, BOOTLOADER_SEG
+            mov bx, BOOTLOADER_DS
             mov es, bx
             mov bx, FAT_SECTOR_BUFFER_POINTER
 
@@ -561,7 +561,7 @@ LOAD_DIR_ENTRY_EXTENDED: ; FILE_CLUSTER - first cluster of a directory entry, DX
             mov cx, 1
 
             xor ebx, ebx
-            mov bx, BOOTLOADER_SEG
+            mov bx, BOOTLOADER_DS
             mov es, bx
             mov bx, FAT_SECTOR_BUFFER_POINTER
 
@@ -599,7 +599,7 @@ LOAD_DIR_ENTRY_EXTENDED: ; FILE_CLUSTER - first cluster of a directory entry, DX
             mov cx, 1
 
             xor ebx, ebx
-            mov bx, BOOTLOADER_SEG
+            mov bx, BOOTLOADER_DS
             mov es, bx
             mov bx, FAT_SECTOR_BUFFER_POINTER
 
