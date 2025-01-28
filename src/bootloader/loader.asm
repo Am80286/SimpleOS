@@ -60,9 +60,10 @@ DISK_MBR_START:
 DISK_MBR_END:
 
     BOOT_BEEP_ENABLE                                    db          0
-    BOOT_STRING_COLOR                                   db          0x1f ;BIOS color attribute https://en.wikipedia.org/wiki/BIOS_color_attributes
+    BOOT_STRING_COLOR                                   db          0x1f ; BIOS color attribute https://en.wikipedia.org/wiki/BIOS_color_attributes
     BOOT_WAIT_TIME                                      db          5
     BOOT_CLEAR_SCREEN                                   db          0
+    AUTOBOOT_ENTRY                                      db          0
 
     BANNER                                              db          "-================================-", " SimpleBoot ", "-======================= ", "v0.1", " ===-", 0
     HEX_OUT                                             db          "0000h", 0
@@ -197,6 +198,10 @@ VAR_TABLE_START:
     VAR_BOOT_CLEAR_SCREEN_TYPE                          db          0x06
     VAR_BOOT_CLEAR_SCREEN_POINTER                       dw          BOOT_CLEAR_SCREEN
 
+    VAR_AUTOBOOT_ENTRY_NAME                             db          "autoboot_entry", 0
+    VAR_AUTOBOOT_ENTRY_TYPE                             db          0x04
+    VAR_AUTOBOOT_ENTRY_POINTER                          dw          AUTOBOOT_ENTRY
+
 VAR_TABLE_END:                                          dw          VAR_TABLE_TERMINATOR
 
 ; Unreal mode GDT
@@ -252,6 +257,8 @@ PMODE_GDT_DESCRIPTOR:
     FILE_NAME_BUFFER times 16                           db          0
     FAT_FILENAME_BUFFER times 16                        db          0
 
+    TEST_DEC_STRING                                     db          "48999", 0
+
     BUFFER:
 
 [bits 16]
@@ -288,11 +295,13 @@ PMODE_GDT_DESCRIPTOR:
 
         call BOOT_CONFIG_INIT
 
-; gotta fix that bug in the converter
-;mov si, TEST_DEC_STRING
-;call DEC_WORD_STRING_TO_NUM
-;mov al, 1
-;call PRINT_DEC
+        mov al, byte[AUTOBOOT_ENTRY]
+        test al, al
+        jz .menu
+
+        jmp GET_KERNEL_CHOICE
+
+    .menu:
 
         cmp word[BOOT_BANNER_FILE_PATH], 0
         je .default_banner
@@ -335,10 +344,13 @@ PMODE_GDT_DESCRIPTOR:
         call PLAY_PC_SPEAKER_TONE
 
     .no_beep:
+        xor al, al
         jmp GET_KERNEL_CHOICE
 
     GET_KERNEL_CHOICE:
         mov cx, word[KERNEL_ENTRY_COUNTER]
+        test al, al
+        jnz .find_kernel_entry
 
     .get_keyboard_input:
         xor ah, ah
