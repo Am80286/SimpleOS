@@ -136,6 +136,7 @@
         inc cx
         cmp al, 0
         jne .find_string_end
+        dec cx
 
         mov ax, 1   ; ax is used as a multiplier 
         sub si, 2   ; set the string pointer to the end character
@@ -149,8 +150,7 @@
 
         xor bh, bh
         mov bl, al  ; some trickery to multiply everything
-        pop ax      ; get the multiplier
-        push ax
+        mov ax, word[esp]
 
         push dx
         mul bx
@@ -159,8 +159,10 @@
         add dx, ax
 
         pop ax
-        mov bl, 10
-        mul bl
+        mov bx, 10
+        push dx
+        mul bx
+        pop dx
 
         dec cx
         jcxz .done
