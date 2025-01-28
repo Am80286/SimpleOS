@@ -279,7 +279,7 @@ PMODE_GDT_DESCRIPTOR:
 
         call ENABLE_A20
 
-        push BOOTLOADER_CS
+        push cs
         call INIT_UNREAL
 
         call INIT_SCRREEN

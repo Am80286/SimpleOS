@@ -2,6 +2,7 @@
 [section .text]
     INIT_UNREAL:
         cli
+        push es
         push ds
 
         lgdt [UNREAL_PMODE_GDT_DESCRIPTOR]
@@ -14,6 +15,9 @@
     .pmode:
         mov  bx, 0x10          ; select descriptor 2
         mov  ds, bx            ; 10h = 10000b
+        mov  es, bx
+        mov  fs, bx
+        mov  gs, bx
 
         and al, 0xfe            ; back to realmode
         mov  cr0, eax          ; by toggling bit again
@@ -21,6 +25,7 @@
 
     .unreal:
         pop ds
+        pop es
         sti
 
         retf
