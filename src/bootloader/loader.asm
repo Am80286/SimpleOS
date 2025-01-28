@@ -204,22 +204,27 @@ VAR_TABLE_START:
 
 VAR_TABLE_END:                                          dw          VAR_TABLE_TERMINATOR
 
-; Unreal mode GDT
-UNREAL_PMODE_GDT_START:
+; Unreal Mode GDT
+
+UNRAEL_CODE_SEG                                         equ         UNREAL_GDT_CODE - UNREAL_GDT_START
+UNREAL_FLAT_SEG                                         equ         UNREAL_GDT_FLAT - UNREAL_GDT_START
+
+UNREAL_GDT_START:
     dq 0x0
 
-UNREAL_CODESC:
+UNREAL_GDT_CODE:
     db 0xff, 0xff, 0, 0, 0, 10011010b, 00000000b, 0
 
-UNREAL_FLATSC:
+UNREAL_GDT_FLAT:
     db 0xff, 0xff, 0, 0, 0, 10010010b, 11001111b, 0
 
-UNREAL_PMODE_GDT_END:
+UNREAL_GDT_END:
 
 UNREAL_PMODE_GDT_DESCRIPTOR:
-    dw UNREAL_PMODE_GDT_END - UNREAL_PMODE_GDT_START - 1
-    dd UNREAL_PMODE_GDT_START
+    dw UNREAL_GDT_END - UNREAL_GDT_START - 1
+    dd UNREAL_GDT_START
 
+; Protected Mode GDT
 PMODE_CODE_SEG                                            equ         PMODE_GDT_CODE - PMODE_GDT_START
 PMODE_DATA_SEG                                            equ         PMODE_GDT_DATA - PMODE_GDT_START
 
@@ -256,8 +261,6 @@ PMODE_GDT_DESCRIPTOR:
 
     FILE_NAME_BUFFER times 16                           db          0
     FAT_FILENAME_BUFFER times 16                        db          0
-
-    TEST_DEC_STRING                                     db          "48999", 0
 
     BUFFER:
 
@@ -297,11 +300,7 @@ PMODE_GDT_DESCRIPTOR:
 
         mov al, byte[AUTOBOOT_ENTRY]
         test al, al
-        jz .menu
-
-        jmp GET_KERNEL_CHOICE
-
-    .menu:
+        jnz GET_KERNEL_CHOICE
 
         cmp word[BOOT_BANNER_FILE_PATH], 0
         je .default_banner
@@ -323,7 +322,7 @@ PMODE_GDT_DESCRIPTOR:
     .default_banner:
         ;setting up colors for the logo
         xor cx, cx
-        mov dx, 80
+        mov dx, 79
         mov ah, 0x07
         mov al, 1
         mov bh, byte[BOOT_STRING_COLOR] ; blue background and white foregoround
