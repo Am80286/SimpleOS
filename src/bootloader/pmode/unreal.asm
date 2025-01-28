@@ -10,10 +10,10 @@
         mov  eax, cr0          ; switch to pmode by
         or al, 1                ; set pmode bit
         mov  cr0, eax
-        jmp 0x8:.pmode
+        jmp UNRAEL_CODE_SEG:.pmode
 
     .pmode:
-        mov  bx, 0x10          ; select descriptor 2
+        mov  bx, UNREAL_FLAT_SEG          ; select descriptor 2
         mov  ds, bx            ; 10h = 10000b
         mov  es, bx
         mov  fs, bx

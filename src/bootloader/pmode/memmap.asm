@@ -1,4 +1,4 @@
 [bits 16]
 [section .text]
-    MEM_DETECT:
+    INIT_MEMORY_MAP:
         
