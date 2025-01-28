@@ -1,11 +1,10 @@
-[section .data]
-    LINUX_ZIMAGE_BOOTSEC_ADDR                           equ         0x90000      ; from the Linux x86 Boot Protocl specification
-    LINUX_ZIMAGE_SETUP_ADDR                             equ         0x90200      ; from the spec as well
-    LINUX_ZIMAGE_SETUP_SEG                              equ         0x9020      ; from the spec as well
-    LINUX_ZIMAGE_MAIN_ADDR                              equ         0x00100000     ; from the spec as well
+LINUX_ZIMAGE_BOOTSEC_ADDR                           equ         0x90000      ; from the Linux x86 Boot Protocl specification
+LINUX_ZIMAGE_SETUP_ADDR                             equ         0x90200      ; from the spec as well
+LINUX_ZIMAGE_SETUP_SEG                              equ         0x9020      ; from the spec as well
+LINUX_ZIMAGE_MAIN_ADDR                              equ         0x00100000     ; from the spec as well
 
-    LINUX_ZIMAGE_LOW_BUFFER_SEG                         equ         0x2000
-    LINUX_ZIMAGE_HIGH_BUFFER_ADDR                       equ         0x200000
+LINUX_ZIMAGE_LOW_BUFFER_SEG                         equ         0x2000
+LINUX_ZIMAGE_HIGH_BUFFER_ADDR                       equ         0x200000
 
 [bits 16]
 [section .text]

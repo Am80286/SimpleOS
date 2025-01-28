@@ -132,23 +132,6 @@
         popa
         ret
 
-    NEWLINE: ; CX - new line count
-        pusha
-        mov ah, 0x0e
-        
-    .loop:
-        jcxz .done
-        mov al, ENDL
-        int 10h
-        mov al, RETC
-        int 10h
-        dec cx
-        jmp .loop
-
-    .done:
-        popa
-        ret
-
 ;
 ;
 ;      _____            __    ____  ____

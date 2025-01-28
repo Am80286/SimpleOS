@@ -9,26 +9,46 @@
 ;    See the GNU General Public License for more details.
 
 ;    You should have received a copy of the GNU General Public License along with SimpleOS. 
-;    If not, see <https://www.gnu.org/licenses/>. 
+;    If not, see <https://www.gnu.org/licenses/>.
+
+%macro NEWLINE 1
+    mov ah, 0x0e
+    mov al, ENDL
+    %rep %1
+        int 10h
+    %endrep
+    mov al, RETC
+    %rep %1
+       int 10h
+    %endrep
+%endmacro
+
+%macro SPACE 1
+    mov ah, 0x0e
+    mov al, ' '
+    %rep %1
+        int 10h
+    %endrep
+%endmacro
+
+RETC                                                equ         0x0D
+ENDL                                                equ         0x0A
+
+VAR_TABLE_TERMINATOR                                equ         0xFC88
+
+KERNEL_TABLE_TERMINATOR                             equ         0xFC99
+KERNEL_ENTRY_SIZE                                   equ         139     ; TODO: make auto detection for this value
+KERNEL_ENTRY_SIG                                    equ         0
+
+CONFIG_FILE_POINTER                                 equ         BUFFER + 512 ; +512 because this is a buffer for FAT sectors
+
+FAT_SECTOR_BUFFER_POINTER                           equ         BUFFER
+
+BOOTLOADER_DS                                       equ         0x0000
+BOOTLOADER_CS                                       equ         0x0800
 
 [org 0x8000]
 [section .data]
-    RETC                                                equ         0x0D
-    ENDL                                                equ         0x0A
-
-    VAR_TABLE_TERMINATOR                                equ         0xFC88
-
-    KERNEL_TABLE_TERMINATOR                             equ         0xFC99
-    KERNEL_ENTRY_SIZE                                   equ         139     ; TODO: make auto detection for this value
-    KERNEL_ENTRY_SIG                                    equ         0
-
-    CONFIG_FILE_POINTER                                 equ         BUFFER + 512 ; +512 because this is a buffer for FAT sectors
-
-    FAT_SECTOR_BUFFER_POINTER                           equ         BUFFER
-
-    BOOTLOADER_DS                                       equ         0x0000
-    BOOTLOADER_CS                                       equ         0x0800
-
     ; no memory manager so the spcae for the mbr has to preallocated here
     ; all the values are placeholders and get overwritten
 
@@ -400,8 +420,7 @@ PMODE_GDT_DESCRIPTOR:
 
         mov si, ax
         call PRINT
-        mov cx, 1
-        call NEWLINE
+        NEWLINE 1
 
         add si, 128
         mov dx, word[ds:si] ; keeping load segment in the AX regidter
@@ -499,9 +518,7 @@ PMODE_GDT_DESCRIPTOR:
     .print_kernel_entry:
         inc bx
 
-        mov al, ' '
-        int 10h
-        int 10h
+        SPACE 2
 
         mov al, '('
         int 10h
@@ -510,8 +527,7 @@ PMODE_GDT_DESCRIPTOR:
         int 10h
         mov al, ')'
         int 10h
-        mov al, ' '
-        int 10h
+        SPACE 1
 
         call PRINT
 
@@ -525,10 +541,7 @@ PMODE_GDT_DESCRIPTOR:
         call PRINT
         pop si
 
-        push cx
-        mov cx, 2
-        call NEWLINE
-        pop cx
+        NEWLINE 2
 
         add si, KERNEL_ENTRY_SIZE
         dec cx
