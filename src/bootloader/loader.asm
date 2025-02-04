@@ -11,6 +11,7 @@
 ;    You should have received a copy of the GNU General Public License along with SimpleOS. 
 ;    If not, see <https://www.gnu.org/licenses/>.
 
+; A macro for printing \n
 %macro NEWLINE 1
     mov ah, 0x0e
     mov al, ENDL
@@ -23,10 +24,20 @@
     %endrep
 %endmacro
 
+; A imple macro for printing spaces
 %macro SPACE 1
     mov ah, 0x0e
     mov al, ' '
     %rep %1
+        int 10h
+    %endrep
+%endmacro
+
+; Another simple macor for printing a specific character
+%macro PCHAR 2
+    mov ah, 0x0e
+    mov al, $1
+    %rep %2
         int 10h
     %endrep
 %endmacro
@@ -194,7 +205,7 @@ VAR_TABLE_START:
     VAR_KERNEL_SEG_TYPE                                 db          0x01
     VAR_KERNEL_SEG_POINTER                              dw          0
 
-    VAR_KERNEL_DEFAULT_NAME                             db          "default", 0
+    VAR_KERNEL_DEFAULT_NAME                             db          "mmap_enable", 0
     VAR_KERNEL_DEFAULT_TYPE                             db          0x06
     VAR_KERNEL_DEFAULT_POINTER                          dw          0
 
@@ -306,6 +317,22 @@ PMODE_GDT_DESCRIPTOR:
         call INIT_UNREAL
 
         call INIT_SCRREEN
+
+        mov dword[CONFIG_FILE_POINTER], 0x88888888
+        mov di, CONFIG_FILE_POINTER
+        call READ_MEM_MAP
+        jc .bad
+
+        NEWLINE 1
+        
+        mov ax, 0x0e01
+        int 10h
+        jmp $
+
+        .bad:
+        mov ax, 0x0e02
+        int 10h
+        jmp $
 
         ; Reading the config file
         mov dx, ds
@@ -464,10 +491,10 @@ PMODE_GDT_DESCRIPTOR:
         jmp .init_32
         
     .load_to_low_mem:
-        xor ebx, ebx
         pop si
         add si, 64
         call LOAD_FILE_BY_PATH
+        xor ebx, ebx
 
     .init_32:
         cli
@@ -873,6 +900,7 @@ PMODE_GDT_DESCRIPTOR:
 %include "gate_a20.asm"
 %include "screen.asm"
 %include "linux16.asm"
+%include "memmap.asm"
 
 ;
 ;

@@ -38,7 +38,7 @@ FALLOCATE=fallocate
 DEBUG_QEMU_ARGS= -hda $(BUILD_DIR)/$(DISK_IMAGE) -monitor stdio # -chardev stdio,id=char0,logfile=serial.log,signal=off -serial chardev:char0 #-boot menu=on #-s -S
 RUN_QEMU_ARGS=-fda $(BUILD_DIR)/$(FLOPPY_IMAGE)
 
-ASM_FLAGS=-f bin -i$(SOURCE_DIR)/bootloader/drivers -i$(SOURCE_DIR)/bootloader/lib -i$(SOURCE_DIR)/bootloader/loaders -i$(SOURCE_DIR)/bootloader/pmode -i$(SOURCE_DIR)/bootloader/
+ASM_FLAGS=-f bin -i$(SOURCE_DIR)/bootloader/drivers -i$(SOURCE_DIR)/bootloader/lib -i$(SOURCE_DIR)/bootloader/loaders -i$(SOURCE_DIR)/bootloader/pmode -i$(SOURCE_DIR)/bootloader/mem -i$(SOURCE_DIR)/bootloader/
 KERNEL_ASM_FLAGS=-f elf
 KERNEL_CC_FLAGS=-march=i386 -ffreestanding -m32 -fpic -fno-pie -fno-pic -pipe -O2 -nostdlib -fno-stack-protector -I$(KERNEL_INCLUDE_DIR)
 
@@ -46,9 +46,9 @@ KERNEL_OBJS  = 	$(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/v
 				$(BUILD_DIR)/libc.o $(BUILD_DIR)/serial.o $(BUILD_DIR)/idt.o $(BUILD_DIR)/interrupts.o \
 				$(BUILD_DIR)/gdt.o $(BUILD_DIR)/gdt_flush.o $(BUILD_DIR)/memory.o $(BUILD_DIR)/panic.o
 
-.PHONY: all image boot kernel clean always debug bootupdate
+.PHONY: all image image_floppy image_FAT32 boot boot_stage2 kernel clean always bootupdate debug run
 
-all: image
+all: image image_floppy
 
 image: boot_FAT16 boot_stage2 kernel
 	@echo "[IMAGE]  Creating a FAT16 disk image"n
