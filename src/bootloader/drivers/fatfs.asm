@@ -502,7 +502,7 @@
             cmp ax, 0xff8
             jae .done
 
-    .after_next_clus
+    .after_next_clus:
         mov word[FILE_CLUSTER], ax
         jmp .loop
 
@@ -631,7 +631,7 @@ LOAD_DIR_ENTRY_EXTENDED: ; FILE_CLUSTER - first cluster of a directory entry, DX
             cmp ax, 0xff8
             jae .done
 
-    .after_next_clus
+    .after_next_clus:
         mov word[FILE_CLUSTER], ax
         jmp .loop
 
