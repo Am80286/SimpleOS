@@ -97,7 +97,7 @@ DISK_MBR_END:
     AUTOBOOT_ENTRY                                      db          0
 
     BANNER                                              db          "-================================-", " SimpleBoot ", "-======================= ", "v0.1", " ===-", 0
-    HEX_OUT                                             db          "0000h", 0
+    HEX_PREFIX                                          db          "0x", 0
     CRIT_ERROR_MSG                                      db          "Critical error encountered!", RETC, ENDL, "Can't continue...", ENDL, RETC, 0
     ANY_KEY_TO_REBOOT_MSG                               db          ENDL, RETC, "Press any key to reboot...", ENDL, RETC, 0
     BOOT_MENU_MSG                                       db          ENDL, RETC, "  Available Kernels:", ENDL, RETC, ENDL, RETC, 0
@@ -105,17 +105,17 @@ DISK_MBR_END:
     BOOTING_KERNEL_MSG                                  db          "Booting selected kernel...", 0
     KENREL_PATH_MSG                                     db          ENDL, RETC, "  Path: ", 0
     CRASH_DUMP_MSG                                      db          ENDL, RETC, "Crash Dump: ", ENDL, RETC, ENDL, RETC, 0
-    AX_MSG                                              db          "AX: ", 0
-    BX_MSG                                              db          "BX: ", 0
-    CX_MSG                                              db          "CX: ", 0
-    DX_MSG                                              db          "DX: ", 0
-    SI_MSG                                              db          "SI: ", 0
-    DI_MSG                                              db          "DI: ", 0
-    CS_MSG                                              db          "CS: ", 0
-    DS_MSG                                              db          ENDL, RETC, "DS: ", 0
-    ES_MSG                                              db          "ES: ", 0
-    SP_MSG                                              db          ENDL, RETC, "SP: ", 0
-    BP_MSG                                              db          "BP: ", 0
+    EAX_MSG                                             db          "EAX: ", 0
+    EBX_MSG                                             db          "EBX: ", 0
+    ECX_MSG                                             db          "ECX: ", 0
+    EDX_MSG                                             db          "EDX: ", 0
+    ESI_MSG                                             db          "ESI: ", 0
+    EDI_MSG                                             db          "EDI: ", 0
+    CS_MSG                                              db          "CS:  ", 0
+    DS_MSG                                              db          ENDL, RETC, "DS:  ", 0
+    ES_MSG                                              db          "ES:  ", 0
+    ESP_MSG                                             db          ENDL, RETC, "ESP: ", 0
+    EBP_MSG                                             db          "EBP: ", 0
 
     LBA_READ_ERROR_MSG                                  db          "Could not read LBA from disk: ", 0
     FILE_NOT_FOUND_ERROR_MSG                            db          "Could not find file", ENDL, RETC, 0
@@ -317,22 +317,6 @@ PMODE_GDT_DESCRIPTOR:
         call INIT_UNREAL
 
         call INIT_SCRREEN
-
-        mov dword[CONFIG_FILE_POINTER], 0x88888888
-        mov di, CONFIG_FILE_POINTER
-        call READ_MEM_MAP
-        jc .bad
-
-        NEWLINE 1
-        
-        mov ax, 0x0e01
-        int 10h
-        jmp $
-
-        .bad:
-        mov ax, 0x0e02
-        int 10h
-        jmp $
 
         ; Reading the config file
         mov dx, ds
