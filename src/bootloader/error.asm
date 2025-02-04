@@ -1,74 +1,80 @@
 [bits 16]
 [section .text]   
     CRIT_ERROR:
-        push bp
-        push sp
         push es
         push ds
-        push di
-        push si
-        push dx
-        push cx
-        push bx
-        push ax
+        push ebp
+        push esp
+        push edi
+        push esi
+        push edx
+        push ecx
+        push ebx
+        push eax
 
         mov si, CRIT_ERROR_MSG
         call PRINT
 
         mov si, CRASH_DUMP_MSG
         call PRINT
+
+        mov al, 1 ; Do newline at every hex value
+        mov bl, 8 ; Fill to 8 zeroes when printing hex
+        mov bh, 1 ; Enable 0x prefix
+
+        mov si, EAX_MSG
+        call PRINT
+        pop edx
+        call PRINT_HEX
+
+        mov si, EBX_MSG
+        call PRINT
+        pop edx
+        call PRINT_HEX
+
+        mov esi, ECX_MSG
+        call PRINT
+        pop edx
+        call PRINT_HEX
+
+        mov si, EDX_MSG
+        call PRINT
+        pop edx
+        call PRINT_HEX
+
+        mov si, ESI_MSG
+        call PRINT
+        pop edx
+        call PRINT_HEX
+
+        mov si, EDI_MSG
+        call PRINT
+        pop edx
+        call PRINT_HEX
+
+        mov si, ESP_MSG
+        call PRINT
+        pop edx
+        call PRINT_HEX
         
-        mov al, 1
-
-        mov si, AX_MSG
+        mov si, EBP_MSG
         call PRINT
-        pop dx
-        call PRINT_HEX_WORD
+        pop edx
+        call PRINT_HEX
 
-        mov si, BX_MSG
-        call PRINT
-        pop dx
-        call PRINT_HEX_WORD
-
-        mov si, CX_MSG
-        call PRINT
-        pop dx
-        call PRINT_HEX_WORD
-
-        mov si, DX_MSG
-        call PRINT
-        pop dx
-        call PRINT_HEX_WORD
-
-        mov si, SI_MSG
-        call PRINT
-        pop dx
-        call PRINT_HEX_WORD
-
-        mov si, DI_MSG
-        call PRINT
-        pop dx
-        call PRINT_HEX_WORD
+        mov bl, 4 ; Set fill to 4 zeros for the segment registers
 
         mov si, DS_MSG
         call PRINT
+        xor edx, edx
         pop dx
-        call PRINT_HEX_WORD
+        call PRINT_HEX
 
         mov si, ES_MSG
         call PRINT
+        xor edx, edx
         pop dx
-        call PRINT_HEX_WORD
-
-        mov si, SP_MSG
-        call PRINT
-        pop dx
-        call PRINT_HEX_WORD
-        
-        mov si, BP_MSG
-        call PRINT
-        pop dx
-        call PRINT_HEX_WORD
+        call PRINT_HEX
 
         mov si, ANY_KEY_TO_REBOOT_MSG
         call PRINT

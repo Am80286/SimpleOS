@@ -44,49 +44,81 @@
         popa
         ret
     
-    PRINT_HEX_WORD:      ;Value to print - DX, AL 1 - \n
-        pusha
+    ; In place of the old PRINT_HEX_WORD, this updated function can
+    ; print hex without needing the HEX_OUT variable and it also 
+    ; works for bytes, words, dword.
+    ; Value to print - EDX
+    ; AL 1 - \n
+    ; BL - number to fill zeros to
+    ; BH 1 - add 0x prefix
+
+    PRINT_HEX:
+        pushad
         push ax
 
-        mov ah, 0x0e
-        mov cx, 4
+        xor cx, cx
 
     .loop:
-        dec cx
-        mov ax, dx
-        shr dx, 4
-        and ax, 0xF
-        mov bx, HEX_OUT
-        add bx, cx
-        cmp ax, 0xA
-        jl .set_letter
-        add byte [ds:bx], 7
+        mov eax, edx
+        shr edx, 4
+
+        inc cx
+
+        and eax, 0xF
+        cmp eax, 0xA
+        jb .set_letter
+        
+        add eax, 7
         
     .set_letter:
-        add byte [ds:bx], al
-        cmp cx, 'h'
-        je .done
+        add eax, 48
+        push eax
+        
+        test edx, edx
+        jz .print
         jmp .loop
 
-    .done:
-        mov si, HEX_OUT
+    .print:
+        test bh, bh
+        jz .no_prefix
+
+        mov si, HEX_PREFIX
         call PRINT
+
+    .no_prefix:
+        test bl, bl
+        jz .print_char
+
+        mov ah, 0x0e
+        xor bh, bh
+
+        cmp cx, bx
+        jae .print_char
+
+        sub bx, cx
+
+    .fill_zero:
+        dec bl
+        mov al, '0'
+        int 10h
+        cmp bl, 0
+        jnz .fill_zero
+
+    .print_char:
+        dec cx
+        pop eax
+        mov ah, 0x0e
+        int 10h
+        test cx, cx
+        jnz .print_char
+        
+    .done: 
         pop ax
         cmp al, 0
-        je .reset_leter
-        mov ah, 0x0e
-        mov al, ENDL
-        int 10h
-        mov al, RETC
-        int 10h
+        je .done
+        NEWLINE 1
 
-    .reset_leter:
-        mov byte[ds:si], 0x30
-        inc si
-        cmp byte[ds:si], 'h'
-        jne .reset_leter
-
-        popa 
+        popad
         ret
     
     PRINT_DEC: ; DX - number to print, AL 1 - \n
