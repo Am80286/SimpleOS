@@ -135,7 +135,7 @@ DISK_MBR_END:
     CONFIG_BOOL_FALSE                                   db          "false"
 
     BOOT_DISK                                           db          0
-    BOOT_CONFIG_FILE_PATH                               db          "boot/boot.cfg", 0
+    BOOT_CONFIG_FILE_PATH                               db          "/boot/boot.cfg", 0
     BOOT_BANNER_FILE_PATH times 64                      db          0
 
     PREVIOUS_FAT_SECTOR                                 dw          0
@@ -312,6 +312,8 @@ PMODE_GDT_DESCRIPTOR:
         xor ax, ax
         mov es, ax
         mov ds, ax
+        mov gs, ax
+        mov fs, ax
         mov ss, ax
 
         mov byte[BOOT_DISK], dl
@@ -382,22 +384,7 @@ PMODE_GDT_DESCRIPTOR:
         je .load_kernel
         push ax
 
-        ; clear the screen
-        mov ah, 0x06
-        xor al, al
-        mov bh, 0x07
-        xor cx, cx
-        mov dh, 24
-        mov dl, 79
-        int 10h
-
-        ; get current video page
-        mov ah, 0x0f
-        int 10h
-
-        mov ah, 0x02
-        xor dx, dx
-        int 10h
+        call CLEAR_SCREEN
         
         pop ax
 

@@ -47,6 +47,30 @@
     .done:
         popa
         ret
+
+    CLEAR_SCREEN:
+        pusha
+
+        ; Clear the screen
+        mov ah, 0x06
+        xor al, al
+        mov bh, 0x07
+        xor cx, cx
+        mov dh, 24
+        mov dl, 79
+        int 10h
+
+        ; Get current video page
+        mov ah, 0x0f
+        int 10h
+
+        ; Reset cursor position
+        mov ah, 0x02
+        xor dx, dx
+        int 10h
+
+        popa
+        ret
     
     ; In place of the old PRINT_HEX_WORD, this updated function can
     ; print hex without needing the HEX_OUT variable and it also 

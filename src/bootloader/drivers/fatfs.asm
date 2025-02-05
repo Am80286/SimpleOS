@@ -1,9 +1,19 @@
 [bits 16]
 [section .text]
-    LOAD_FILE_BY_PATH:     ; DS:SI - pointer to a file path string (unix style), DX:EBX - load adress, ES must equal DS
-        pushad                      ; yet another reimplementation for loading stuff into high memory
+    ; This is a function made for reading a file by it's absoulte unix style path.
+    ; Works both with low and high memory, pretty much a hybrid of the old 
+    ; LOAD_FILE_BY_PATH and LOAD_FILE_BY_PATH_EXTENEDED.
+    ; DS:SI - pointer to a file path string (unix style), DX:EBX - load adress, ES must equal DS
+
+    LOAD_FILE_BY_PATH:
+        pushad
 
         mov di, FILE_NAME_BUFFER
+
+        cmp byte[ds:si], '/'
+        jne .get_next_dir
+
+        inc si ; skip the first /
 
         cmp ebx, 0x10000
         jae .extended
