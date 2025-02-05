@@ -38,8 +38,8 @@ FALLOCATE=fallocate
 DEBUG_QEMU_ARGS= -hda $(BUILD_DIR)/$(DISK_IMAGE) -monitor stdio # -chardev stdio,id=char0,logfile=serial.log,signal=off -serial chardev:char0 #-boot menu=on #-s -S
 RUN_QEMU_ARGS=-fda $(BUILD_DIR)/$(FLOPPY_IMAGE)
 
-ASM_FLAGS=-f bin -i$(SOURCE_DIR)/bootloader/drivers -i$(SOURCE_DIR)/bootloader/lib -i$(SOURCE_DIR)/bootloader/loaders -i$(SOURCE_DIR)/bootloader/pmode -i$(SOURCE_DIR)/bootloader/mem -i$(SOURCE_DIR)/bootloader/
-KERNEL_ASM_FLAGS=-f elf
+BOOTLOADER_ASM_FLAGS=-f bin -i$(SOURCE_DIR)/bootloader/drivers -i$(SOURCE_DIR)/bootloader/lib -i$(SOURCE_DIR)/bootloader/loaders -i$(SOURCE_DIR)/bootloader/pmode -i$(SOURCE_DIR)/bootloader/mem -i$(SOURCE_DIR)/bootloader/
+KERNEL_BOOTLOADER_ASM_FLAGS=-f elf
 KERNEL_CC_FLAGS=-march=i386 -ffreestanding -m32 -fpic -fno-pie -fno-pic -pipe -O2 -nostdlib -fno-stack-protector -I$(KERNEL_INCLUDE_DIR)
 
 KERNEL_OBJS  = 	$(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/vga.o $(BUILD_DIR)/io.o \
@@ -99,19 +99,19 @@ bootupdate:
 
 boot_FAT12: always
 	@echo "[BOOTLOADER]  Compiling Stage 1 FAT12"
-	@$(ASM) $(ASM_FLAGS) $(SOURCE_DIR)/bootloader/boot.asm -o $(BUILD_DIR)/boot.bin -D FAT12
+	@$(ASM) $(BOOTLOADER_ASM_FLAGS) $(SOURCE_DIR)/bootloader/boot.asm -o $(BUILD_DIR)/boot.bin -D FAT12
 
 boot_FAT16: always
 	@echo "[BOOTLOADER]  Compiling Stage 1 FAT16"
-	@$(ASM) $(ASM_FLAGS) $(SOURCE_DIR)/bootloader/boot.asm -o $(BUILD_DIR)/boot.bin -D FAT16
+	@$(ASM) $(BOOTLOADER_ASM_FLAGS) $(SOURCE_DIR)/bootloader/boot.asm -o $(BUILD_DIR)/boot.bin -D FAT16
 
 boot_FAT32: always
 	@echo "[BOOTLOADER]  Compiling Stage 1 FAT32"
-	@$(ASM) $(ASM_FLAGS) $(SOURCE_DIR)/bootloader/boot.asm -o $(BUILD_DIR)/boot.bin -D FAT32
+	@$(ASM) $(BOOTLOADER_ASM_FLAGS) $(SOURCE_DIR)/bootloader/boot.asm -o $(BUILD_DIR)/boot.bin -D FAT32
 
 boot_stage2: always
 	@echo "[BOOTLOADER]  Compiling Stage 2"
-	@$(ASM) $(ASM_FLAGS) $(SOURCE_DIR)/bootloader/loader.asm  -o $(BUILD_DIR)/loader.bin
+	@$(ASM) $(BOOTLOADER_ASM_FLAGS) $(SOURCE_DIR)/bootloader/loader.asm  -o $(BUILD_DIR)/loader.bin
 
 kernel: always $(KERNEL_OBJS)
 	@echo "[KERNEL]  Linking kernel"
@@ -128,11 +128,11 @@ $(BUILD_DIR)/%.o: $(SOURCE_DIR)/kernel/kernel/*/%.c
 
 $(BUILD_DIR)/%.o: $(SOURCE_DIR)/kernel/*/%.asm
 	@echo "[KERNEL]  Compiling $<"
-	@$(ASM) $< -o $@ $(KERNEL_ASM_FLAGS)
+	@$(ASM) $< -o $@ $(KERNEL_BOOTLOADER_ASM_FLAGS)
 
 $(BUILD_DIR)/%.o: $(SOURCE_DIR)/kernel/kernel/*/%.asm
 	@echo "[KERNEL]  Compiling $<"
-	@$(ASM) $< -o $@ $(KERNEL_ASM_FLAGS)
+	@$(ASM) $< -o $@ $(KERNEL_BOOTLOADER_ASM_FLAGS)
 
 always:
 	@mkdir -p $(BUILD_DIR)

@@ -1,16 +1,19 @@
 [bits 16]
 [section .text]
-    LOAD_FILE_BY_PATH_EXTENDED:     ; DS:SI - pointer to a file path string (unix style), DX:EBX - load adress, ES must equal DS
+    LOAD_FILE_BY_PATH:     ; DS:SI - pointer to a file path string (unix style), DX:EBX - load adress, ES must equal DS
         pushad                      ; yet another reimplementation for loading stuff into high memory
-
-        push es
-        mov es, dx
-        mov edi, ebx
-        call LOAD_ROOT_DIR_EXTENDED
-        pop es
 
         mov di, FILE_NAME_BUFFER
 
+        cmp ebx, 0x10000
+        jae .extended
+
+        call LOAD_ROOT_DIR
+        jmp .get_next_dir
+
+    .extended
+        call LOAD_ROOT_DIR_EXTENDED
+    
     .get_next_dir:
         push di
         mov cx, 32
@@ -47,11 +50,11 @@
         mov ax, 0xffff
         push es
         mov es, dx
-        call SEARCH_DIR_EXTENDED
+        call SEARCH_DIR
         pop es
         jc FILE_NOT_FOUND_ERROR
 
-        call LOAD_DIR_ENTRY_EXTENDED
+        call LOAD_DIR_ENTRY
 
         jmp .done
         
@@ -69,11 +72,11 @@
         push es
         mov es, dx
 
-        call SEARCH_DIR_EXTENDED
+        call SEARCH_DIR
         pop es
         jc FILE_NOT_FOUND_ERROR
 
-        call LOAD_DIR_ENTRY_EXTENDED
+        call LOAD_DIR_ENTRY
 
         mov edi, FILE_NAME_BUFFER ; returning the filename buffer pointer
         pop esi
@@ -82,88 +85,6 @@
 
     .done:
         popad
-        ret
-
-    LOAD_FILE_BY_PATH: ; DS:SI - pointer to a file path string (unix style), DX:BX - load adress, ES must equal DS
-        pusha
-
-        push es
-        mov es, dx
-        mov di, bx
-        call LOAD_ROOT_DIR
-        pop es
-
-        mov di, FILE_NAME_BUFFER
-
-    .get_next_dir:
-        push di
-        mov cx, 32
-
-    .zero_out_buffers:
-        mov al, 0
-        stosb
-        dec cx
-        test cx, cx
-        jnz .zero_out_buffers
-        
-        pop di
-
-    .read_string_bytes:
-        lodsb
-        
-        cmp al, '/'
-        je .read_dir
-        cmp al, 0
-        je .read_final_file
-    
-        stosb
-
-        jmp .read_string_bytes
-
-    .read_final_file:               ; this can definitely be optimized
-        mov si, FILE_NAME_BUFFER        ; two almost identical pieces of code for
-        mov di, FAT_FILENAME_BUFFER     ; .read_dir and .read_final_file
-        call STRING_TO_FAT_FILENAME
-
-        mov si, di
-        mov di, bx
-
-        mov ax, 0xffff
-        push es
-        mov es, dx
-        call SEARCH_DIR
-        pop es
-        jc FILE_NOT_FOUND_ERROR
-
-        call LOAD_DIR_ENTRY
-
-        jmp .done
-        
-    .read_dir:
-        push si
-        mov si, FILE_NAME_BUFFER
-        mov di, FAT_FILENAME_BUFFER
-        call STRING_TO_FAT_FILENAME
-
-        mov si, di
-        mov di, bx
-
-        mov ax, 0xffff
-        push es
-        mov es, dx
-        call SEARCH_DIR
-        pop es
-        jc FILE_NOT_FOUND_ERROR
-
-        call LOAD_DIR_ENTRY
-
-        mov di, FILE_NAME_BUFFER ; returning the filename buffer pointer
-        pop si
-
-        jmp .get_next_dir
-
-    .done:
-        popa
         ret
         
     INIT_BOOT_DISK:
@@ -257,7 +178,7 @@
         popa
         ret
 
-    SEARCH_DIR_EXTENDED:  ; DS:ESI - pointer to name string, ES:EDI - pointer to directory, AX - number of entries to check
+    SEARCH_DIR:  ; DS:ESI - pointer to name string, ES:EDI - pointer to directory, AX - number of entries to check
         pushad            ; same as SEARCH_DIR but works with high memory
         xor bx, bx
         cld
@@ -291,44 +212,12 @@
         popad
         ret
 
-    SEARCH_DIR: ; DS:SI - pointer to name string, ES:DI - pointer to directory, AX - number of entries to check
-        pusha
-        xor bx, bx
-        cld
-
-        .loop:
-        mov cx, 11
-        push si
-        push di
-        repe cmpsb
-        pop di
-        pop si
-
-        je .found
-
-        inc bx
-        add di, 32
-        cmp bx, ax
-        jb .loop
-
-        stc
-        jmp .done
-        
-    .found: ;directory entry pointer is in DI register
-        mov ax, word[es:di + 26]
-        mov [FILE_CLUSTER], ax
-        mov ax, word[es:di + 28]
-        mov [FILE_SIZE], ax
-        mov ax, word[es:di + 30]
-        mov [FILE_SIZE + 2], ax
-
-    .done:
-        popa
-        ret
-
-    LOAD_ROOT_DIR_EXTENDED: ; ES:EDI - load adress 
+    LOAD_ROOT_DIR_EXTENDED: ; DX:EBX - load adress 
         pushad
-        push edi
+        push es
+        push ebx
+
+        mov es, dx
         
         mov al, [BPB_FatNum]
         xor ah, ah
@@ -353,12 +242,16 @@
         pop ebx ; getting load adress from stack
         call READ_LBA_EXTENDED
 
+        pop es
         popad
         ret
 
-    LOAD_ROOT_DIR: ; ES:DI - load adress 
+    LOAD_ROOT_DIR: ; ES:BX - load adress 
         pusha
-        push di
+        push es
+        push bx
+
+        mov es, dx
 
         mov al, [BPB_FatNum]
         xor ah, ah
@@ -383,11 +276,12 @@
         pop bx ; getting load adress from stack
         call READ_LBA
 
+        pop es
         popa
         ret
 
     LOAD_DIR_ENTRY: ; FILE_CLUSTER - first cluster of a directory entry, DX:BX - load adress
-        pusha
+        pushad
         push es
         mov es, dx
 
@@ -399,13 +293,25 @@
         mul cx
         add ax, [DISK_DATA_START_SEC]
 
-        call READ_LBA
+        cmp ebx, 0x10000 ; Check if we need to use READ_LBA_EXTENDED
+        jae .extended
 
+        call READ_LBA
+        jmp .offsetts
+
+    .extended:
+        call READ_LBA_EXTENDED
+
+    .offsetts:
+        xor eax, eax
         mov ax, word[BPB_BytesPerSec]
         xor dh, dh
         mov dl, byte[BPB_SecPerClus]
         mul dx
-        add bx, ax
+        add ebx, eax
+
+        cmp ebx, 0x10000
+        jae .read_fat
 
         test bx, bx
         jnz .read_fat   ; If end of the current segment is reached
@@ -424,7 +330,7 @@
         jmp CRIT_ERROR
 
         .fat16:
-            push bx
+            push ebx
             push es
 
             xor dx, dx
@@ -450,7 +356,7 @@
             mov ax, word[es:si]
 
             pop es
-            pop bx
+            pop ebx
 
             cmp ax, 0xFFF8
             jae .done
@@ -458,7 +364,7 @@
             jmp .after_next_clus
 
         .fat12:
-            push bx
+            push ebx
             push es
 
             mov ax, word[FILE_CLUSTER]
@@ -497,136 +403,7 @@
 
         .next_clus:
             pop es
-            pop bx
-
-            cmp ax, 0xff8
-            jae .done
-
-    .after_next_clus:
-        mov word[FILE_CLUSTER], ax
-        jmp .loop
-
-    .done:
-        pop es
-        popa
-        ret
-
-LOAD_DIR_ENTRY_EXTENDED: ; FILE_CLUSTER - first cluster of a directory entry, DX:EBX - load adress
-        pushad
-        push es
-        mov es, dx
-
-    .loop:
-        xor ch, ch
-        mov cl, byte[BPB_SecPerClus]
-        mov ax, word[FILE_CLUSTER]
-        sub ax, 2
-        mul cx
-        add ax, [DISK_DATA_START_SEC]
-
-        call READ_LBA_EXTENDED
-
-        xor eax, eax
-        mov ax, word[BPB_BytesPerSec]
-        xor dh, dh
-        mov dl, byte[BPB_SecPerClus]
-        mul dx
-        add ebx, eax
-
-        test ebx, ebx
-        jnz .read_fat   ; If end of the current segment is reached
-        mov ax, es      ; get the current value of the segment
-        add ax, 0x1000  ; switch the segment
-        mov es, ax
-
-    ; Okay so this might look little confusing, but all it does is it chooses the read algoritm based on the fat type
-
-    .read_fat:
-        cmp byte[DISK_FS_TYPE], 0x01
-        je .fat12
-        cmp byte[DISK_FS_TYPE], 0x02
-        je .fat16
-
-        jmp CRIT_ERROR
-
-        .fat16:
-            push es
-            push ebx
-
-            xor edx, edx
-            mov ax, word[FILE_CLUSTER]
-            shl ax, 1
-            div word[BPB_BytesPerSec]
-            add ax, word[BPB_RsvdSecCnt]
-            mov cx, 1
-
-            xor ebx, ebx
-            mov bx, BOOTLOADER_DS
-            mov es, bx
-            mov bx, FAT_SECTOR_BUFFER_POINTER
-
-            cmp ax, word[PREVIOUS_FAT_SECTOR]
-            je .skip16
-
-            call READ_LBA
-            mov word[PREVIOUS_FAT_SECTOR], ax
-
-        .skip16:
-            add edx, ebx
-            mov esi, edx
-            mov ax, word[es:esi]
-
             pop ebx
-            pop es
-
-            cmp ax, 0xFFF8
-            jae .done
-
-            jmp .after_next_clus
-
-        .fat12:
-            push es
-            push ebx
-
-            xor edx, edx
-            mov ax, word[FILE_CLUSTER]
-            mov dx, ax
-            shr ax, 1
-            add ax, dx
-            xor dx, dx
-            div word[BPB_BytesPerSec]
-            add ax, word[BPB_RsvdSecCnt]
-            mov cx, 1
-
-            xor ebx, ebx
-            mov bx, BOOTLOADER_DS
-            mov es, bx
-            mov bx, FAT_SECTOR_BUFFER_POINTER
-
-            cmp ax, word[PREVIOUS_FAT_SECTOR]
-            je .skip12
-
-            call READ_LBA
-            mov word[PREVIOUS_FAT_SECTOR], ax
-
-        .skip12:
-            add edx, ebx
-            mov esi, edx
-            mov ax, word[es:esi]
-
-            test word[FILE_CLUSTER], 1
-            jz .even
-
-        .odd:
-            shr ax, 4
-            jmp .next_clus
-
-        .even:
-            and ax, 0xfff
-
-        .next_clus:
-            pop ebx
-            pop es
 
             cmp ax, 0xff8
             jae .done

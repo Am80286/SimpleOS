@@ -320,7 +320,7 @@ PMODE_GDT_DESCRIPTOR:
 
         ; Reading the config file
         mov dx, ds
-        mov bx, CONFIG_FILE_POINTER
+        mov ebx, CONFIG_FILE_POINTER
         mov si, BOOT_CONFIG_FILE_PATH
 
         call LOAD_FILE_BY_PATH
@@ -333,38 +333,10 @@ PMODE_GDT_DESCRIPTOR:
         test al, al
         jnz GET_KERNEL_CHOICE
 
-        cmp word[BOOT_BANNER_FILE_PATH], 0
-        je .default_banner
-
-    .custom_banner:
-        mov bx, word[KERNEL_TABLE_POINTER]
-        mov ax, word[KERNEL_ENTRY_COUNTER]
-        mov cx, KERNEL_ENTRY_SIZE
-        mul cx
-        add bx, ax
-        mov dx, ds
-        mov si, BOOT_BANNER_FILE_PATH
-        call LOAD_FILE_BY_PATH
-        mov si, bx
-        call PRINT_TXT
-
-        jmp .final
-
-    .default_banner:
-        ;setting up colors for the logo
-        xor cx, cx
-        mov dx, 79
-        mov ah, 0x07
-        mov al, 1
-        mov bh, byte[BOOT_STRING_COLOR] ; blue background and white foregoround
-        int 10h
-
-        mov si, BANNER
-        call PRINT
+        call PRINT_BANNERS
 
         call BOOT_MENU_INIT
 
-    .final:
         cmp byte[BOOT_BEEP_ENABLE], 0
         je .no_beep
 
@@ -471,7 +443,7 @@ PMODE_GDT_DESCRIPTOR:
         mov ebx, dword[ds:si]
         pop si
         add si, 64
-        call LOAD_FILE_BY_PATH_EXTENDED
+        call LOAD_FILE_BY_PATH
         jmp .init_32
         
     .load_to_low_mem:
@@ -514,6 +486,39 @@ PMODE_GDT_DESCRIPTOR:
         jmp ebx
 
 [bits 16]
+    PRINT_BANNERS:
+        cmp word[BOOT_BANNER_FILE_PATH], 0
+        je .default_banner
+
+    .custom_banner:
+        mov bx, word[KERNEL_TABLE_POINTER]
+        mov ax, word[KERNEL_ENTRY_COUNTER]
+        mov cx, KERNEL_ENTRY_SIZE
+        mul cx
+        add bx, ax
+        mov dx, ds
+        mov si, BOOT_BANNER_FILE_PATH
+        call LOAD_FILE_BY_PATH
+        mov si, bx
+        call PRINT_TXT
+
+        jmp .done
+
+    .default_banner:
+        ;setting up colors for the logo
+        xor cx, cx
+        mov dx, 79
+        mov ah, 0x07
+        mov al, 1
+        mov bh, byte[BOOT_STRING_COLOR] ; blue background and white foregoround
+        int 10h
+
+        mov si, BANNER
+        call PRINT
+
+    .done:
+        ret
+
     BOOT_MENU_INIT: ; probably a good idea to rework the whole alogoritm for placig all spaces, bracets, etc
         pusha
 

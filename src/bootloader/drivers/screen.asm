@@ -1,7 +1,11 @@
 [bits 16]
 [section .text]
     INIT_SCRREEN:
-        mov ax, 0x0003
+        mov ax, 0x0003 ; Text mde 80x25
+        int 10h
+
+        mov ah, 0x01
+        mov cx, 0x2607 ; Invisible cursor
         int 10h
         
         ret
