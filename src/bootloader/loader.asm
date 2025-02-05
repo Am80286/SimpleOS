@@ -244,10 +244,20 @@ UNREAL_GDT_START:
     dq 0x0
 
 UNREAL_GDT_CODE:
-    db 0xff, 0xff, 0, 0, 0, 10011010b, 00000000b, 0
+    dw 0xffff
+    dw 0x0
+    db 0x0
+    db 10011010b
+    db 00000000b
+    db 0
 
 UNREAL_GDT_FLAT:
-    db 0xff, 0xff, 0, 0, 0, 10010010b, 11001111b, 0
+    dw 0xffff
+    dw 0x0
+    db 0x0
+    db 10010010b
+    db 11001111b
+    db 0
 
 UNREAL_GDT_END:
 
@@ -331,25 +341,18 @@ PMODE_GDT_DESCRIPTOR:
 
         mov al, byte[AUTOBOOT_ENTRY]
         test al, al
-        jnz GET_KERNEL_CHOICE
+        jnz UI_INPUT
 
         call PRINT_BANNERS
 
         call BOOT_MENU_INIT
 
-        cmp byte[BOOT_BEEP_ENABLE], 0
-        je .no_beep
+        call PLAY_BOOTUP_SOUND
 
-        mov ax, 1200
-        mov cx, 0x0004
-        mov dx, 0x5730
-        call PLAY_PC_SPEAKER_TONE
-
-    .no_beep:
         xor al, al
-        jmp GET_KERNEL_CHOICE
+        jmp UI_INPUT
 
-    GET_KERNEL_CHOICE:
+    UI_INPUT:
         mov cx, word[KERNEL_ENTRY_COUNTER]
         test al, al
         jnz .find_kernel_entry
@@ -486,6 +489,18 @@ PMODE_GDT_DESCRIPTOR:
         jmp ebx
 
 [bits 16]
+    PLAY_BOOTUP_SOUND:
+        cmp byte[BOOT_BEEP_ENABLE], 0
+        je .done
+
+        mov ax, 1200
+        mov cx, 0x0004
+        mov dx, 0x5730
+        call PLAY_PC_SPEAKER_TONE
+
+    .done:
+        ret
+
     PRINT_BANNERS:
         cmp word[BOOT_BANNER_FILE_PATH], 0
         je .default_banner
