@@ -360,11 +360,14 @@ PMODE_GDT_DESCRIPTOR:
     .get_keyboard_input:
         xor ah, ah
         int 16h
+
+        cmp al, '0'
+        jb .get_keyboard_input
+        cmp al, '9'
+        ja .get_keyboard_input
         
         sub al, 48  ; convert the character to a number
-        cmp al, 1
-        jb .get_keyboard_input
-        cmp al, cl
+        cmp al, cl  ; check if the number is within range
         jg .get_keyboard_input
 
     .find_kernel_entry:
@@ -830,7 +833,7 @@ PMODE_GDT_DESCRIPTOR:
     .apply_dec_word:
         push si                     ; save the var pointer
         mov si, CONFIG_VAR_STRING_VAL_BUFFER
-        call DEC_WORD_STRING_TO_NUM
+        call DEC_STRING_TO_NUM
         pop si
         mov bx, word[ds:si]         ; not sure if  using lodsw is better
         mov word[ds:bx], dx         ; applying the value
@@ -839,7 +842,7 @@ PMODE_GDT_DESCRIPTOR:
     .apply_dec_byte:
         push si                     ; save the var pointer
         mov si, CONFIG_VAR_STRING_VAL_BUFFER
-        call DEC_WORD_STRING_TO_NUM
+        call DEC_STRING_TO_NUM
         pop si
         mov bx, word[ds:si]         ; not sure if  using lodsw is better
         mov byte[ds:bx], dl         ; applying the value
@@ -859,7 +862,7 @@ PMODE_GDT_DESCRIPTOR:
     .apply_hex_dword:
         push si
         mov si, CONFIG_VAR_STRING_VAL_BUFFER
-        call HEX_DWORD_STRING_TO_NUM
+        call HEX_STRING_TO_NUM
         pop si
         mov bx, word[ds:si]         ; not sure if  using lodsw is better
         mov dword[ds:bx], edx       ; applying the value
@@ -868,7 +871,7 @@ PMODE_GDT_DESCRIPTOR:
     .apply_hex_word:
         push si
         mov si, CONFIG_VAR_STRING_VAL_BUFFER
-        call HEX_WORD_STRING_TO_NUM
+        call HEX_STRING_TO_NUM
         pop si
         mov bx, word[ds:si]         ; not sure if  using lodsw is better
         mov word[ds:bx], dx         ; applying the value
@@ -877,7 +880,7 @@ PMODE_GDT_DESCRIPTOR:
     .apply_hex_byte:
         push si
         mov si, CONFIG_VAR_STRING_VAL_BUFFER
-        call HEX_WORD_STRING_TO_NUM
+        call HEX_STRING_TO_NUM
         pop si
         mov bx, word[ds:si]         ; not sure if  using lodsw is better
         mov byte[ds:bx], dl         ; applying the value
