@@ -125,31 +125,31 @@
         popad
         ret
     
-    PRINT_DEC: ; DX - number to print, AL 1 - \n
-        pusha
+    PRINT_DEC: ; EDX - number to print, AL 1 - \n
+        pushad
         push ax
 
-        mov ax, dx
+        mov eax, edx
         xor cx, cx
-        cmp ax, 0
+        cmp eax, 0
         je .done
 
     .loop:
-        cmp ax, 0
+        cmp eax, 0
         je .print
-        mov bx, 10
-        xor dx, dx
-        div bx
+        mov ebx, 10
+        xor edx, edx
+        div ebx
         add dl, 48
         cmp dl, 48
         jl .loop
-        push dx
+        push edx
         inc cx
         jmp .loop
 
     .print:
         dec cx
-        pop ax
+        pop eax
         mov ah, 0x0e
         int 10h
         cmp cx, 0
@@ -165,7 +165,7 @@
         int 10h
 
     .done:
-        popa
+        popad
         ret
 
 ;
