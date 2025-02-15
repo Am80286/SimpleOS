@@ -890,7 +890,7 @@ PMODE_GDT_DESCRIPTOR:
 %include "diskio.asm"
 %include "pcspk.asm"
 %include "fatfs.asm"
-%include "stringutil.asm"
+%include "stringlib.asm"
 %include "gate_a20.asm"
 %include "screen.asm"
 %include "linux16.asm"
