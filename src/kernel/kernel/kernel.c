@@ -3,6 +3,7 @@
 #include <vga.h>
 #include <serial.h>
 #include <config.h>
+#include <pci.h>
 
 void kernel_main(void)
 {
@@ -18,11 +19,14 @@ void kernel_main(void)
     scrprintf("Initialized interrupts\n");
 
     if (init_serial_port(SERIAL_DEBUG_PORT, SERIAL_DEBUG_PORT_BAUDRATE)){
-        scrprintf("Unable to initalize a debug serial port");
+        scrprintf("Unable to initalize a debug serial port\n");
     } else {
-        scrprintf("Debug serial port initialized at: 0x%h", SERIAL_DEBUG_PORT);
+        scrprintf("Debug serial port initialized at: 0x%h\n", SERIAL_DEBUG_PORT);
         serial_printf(SERIAL_DEBUG_PORT, "SimpleOS Debug Serial.....\n\r");
     }
+
+    init_pci();
+    scrprintf("Initalized PCI\n");
     
 	while (1);
 }
