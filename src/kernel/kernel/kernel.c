@@ -27,6 +27,6 @@ void kernel_main(void)
 
     init_pci();
     scrprintf("Initalized PCI\n");
-    
+
 	while (1);
 }

@@ -63,7 +63,9 @@ uint32_t pci_read(pci_dev_t dev, uint8_t register_off);
 
 void pci_write(pci_dev_t dev, uint8_t register_off, uint32_t value);
 
-pci_dev_t pci_get_device(uint16_t dev_id, uint16_t ven_id, uint16_t dev_type);
+pci_dev_t pci_get_device_by_id(uint16_t dev_id, uint16_t ven_id, uint16_t dev_type);
+
+pci_dev_t pci_get_device_by_type(uint16_t dev_type);
 
 void init_pci();
 
