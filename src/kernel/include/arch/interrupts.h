@@ -6,6 +6,8 @@
 
 #define IDT_ENTRIES 48
 
+#define IRQ_BASE 32
+
 #define PIC1		0x20		// IO base address for master PIC
 #define PIC2		0xA0		// IO base address for slave PIC
 #define PIC1_COMMAND	PIC1
@@ -54,6 +56,8 @@ typedef struct
 typedef void (*isr_t)();
 
 void init_interrupts();
+
+void install_interrupt_handler(uint8_t vector, isr_t handler);
 
 void EOI(uint8_t vector);
 
