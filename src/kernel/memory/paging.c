@@ -1,7 +1,6 @@
 #include <memory.h>
 #include <stdint.h>
 #include <arch/interrupts.h>
-#include <config.h>
 #include <kernel.h>
 #include <vga.h>
 
