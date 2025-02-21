@@ -44,7 +44,7 @@ KERNEL_CC_FLAGS=-march=i386 -ffreestanding -m32 -fpic -fno-pie -fno-pic -pipe -O
 
 KERNEL_OBJS  = 	$(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/vga.o $(BUILD_DIR)/io.o \
 				$(BUILD_DIR)/libc.o $(BUILD_DIR)/serial.o $(BUILD_DIR)/idt_helper.o $(BUILD_DIR)/interrupts.o \
-				$(BUILD_DIR)/gdt.o $(BUILD_DIR)/gdt_helper.o $(BUILD_DIR)/memory.o $(BUILD_DIR)/panic.o \
+				$(BUILD_DIR)/gdt.o $(BUILD_DIR)/gdt_helper.o $(BUILD_DIR)/paging.o $(BUILD_DIR)/panic.o \
 				$(BUILD_DIR)/ata.o $(BUILD_DIR)/pci.o $(BUILD_DIR)/ssp.o
 
 .PHONY: all image image_floppy image_FAT32 boot boot_stage2 kernel clean always bootupdate debug run
@@ -123,7 +123,15 @@ $(BUILD_DIR)/%.o: $(SOURCE_DIR)/kernel/*/%.c
 	@echo "[KERNEL]  Compiling $<"
 	@$(CC) -o $@ -c $< $(KERNEL_CC_FLAGS) -I$(KERNEL_INCLUDE_DIR)
 
+$(BUILD_DIR)/%.o: $(SOURCE_DIR)/kernel/%.c
+	@echo "[KERNEL]  Compiling $<"
+	@$(CC) -o $@ -c $< $(KERNEL_CC_FLAGS) -I$(KERNEL_INCLUDE_DIR)
+
 $(BUILD_DIR)/%.o: $(SOURCE_DIR)/kernel/*/%.asm
+	@echo "[KERNEL]  Compiling $<"
+	@$(ASM) $< -o $@ $(KERNEL_BOOTLOADER_ASM_FLAGS)
+
+$(BUILD_DIR)/%.o: $(SOURCE_DIR)/kernel/%.asm
 	@echo "[KERNEL]  Compiling $<"
 	@$(ASM) $< -o $@ $(KERNEL_BOOTLOADER_ASM_FLAGS)
 
