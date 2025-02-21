@@ -4,6 +4,7 @@
 #include <serial.h>
 #include <config.h>
 #include <pci.h>
+#include <keyboard.h> 
 
 void kernel_main(void)
 {
@@ -27,6 +28,9 @@ void kernel_main(void)
 
     init_pci();
     scrprintf("Initalized PCI\n");
+
+    init_keyboard();
+    scrprintf("Initialized keyboard\n");
 
 	while (1);
 }
