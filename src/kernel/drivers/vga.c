@@ -48,7 +48,7 @@ volatile void scroll_terminal(uint16_t lines)
 	
 	for(uint16_t i = 0; i < lines; i++){
 		for(int i = 1; i <= VGA_HEIGHT; i++){
-			memcpy(terminal_buffer + VGA_WIDTH * i, terminal_buffer + VGA_WIDTH * (i - 1), VGA_WIDTH);
+			memcpy(terminal_buffer + VGA_WIDTH * i, terminal_buffer + VGA_WIDTH * (i - 1), VGA_WIDTH * sizeof(uint16_t));
 		}
 		
 		terminal_row--;
