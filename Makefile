@@ -123,15 +123,7 @@ $(BUILD_DIR)/%.o: $(SOURCE_DIR)/kernel/*/%.c
 	@echo "[KERNEL]  Compiling $<"
 	@$(CC) -o $@ -c $< $(KERNEL_CC_FLAGS) -I$(KERNEL_INCLUDE_DIR)
 
-$(BUILD_DIR)/%.o: $(SOURCE_DIR)/kernel/kernel/*/%.c
-	@echo "[KERNEL]  Compiling $<"
-	@$(CC) -o $@ -c $< $(KERNEL_CC_FLAGS) -I$(KERNEL_INCLUDE_DIR)
-
 $(BUILD_DIR)/%.o: $(SOURCE_DIR)/kernel/*/%.asm
-	@echo "[KERNEL]  Compiling $<"
-	@$(ASM) $< -o $@ $(KERNEL_BOOTLOADER_ASM_FLAGS)
-
-$(BUILD_DIR)/%.o: $(SOURCE_DIR)/kernel/kernel/*/%.asm
 	@echo "[KERNEL]  Compiling $<"
 	@$(ASM) $< -o $@ $(KERNEL_BOOTLOADER_ASM_FLAGS)
 
