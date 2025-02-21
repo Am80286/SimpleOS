@@ -146,7 +146,7 @@ pci_dev_t pci_get_device(uint16_t dev_id, uint16_t ven_id, uint16_t dev_type)
 
 pci_dev_t pci_get_device_by_type(uint16_t dev_type)
 {
-    pci_get_device(-1, -1, dev_type);
+    return pci_get_device(-1, -1, dev_type);
 }
 
 static void pci_size_map_init()
