@@ -57,9 +57,9 @@ static uint8_t pci_end_reached(pci_dev_t dev)
 }
 
 // Temporary declaration
-static pci_dev_t pci_scan_bus_for_type(uint16_t dev_type, uint8_t bus);
+static pci_dev_t pci_scan_bus(uint8_t bus, uint16_t dev_id, uint16_t ven_id, uint16_t dev_type);
 
-static pci_dev_t pci_check_function_for_type(uint8_t func, uint8_t dev, uint16_t dev_type, uint8_t bus)
+static pci_dev_t pci_check_function(uint8_t func, uint8_t dev, uint16_t dev_type, uint16_t dev_id, uint16_t ven_id, uint8_t bus)
 {
     pci_dev_t pci_dev = { 0 };
     pci_dev.device_num = dev;
@@ -68,70 +68,14 @@ static pci_dev_t pci_check_function_for_type(uint8_t func, uint8_t dev, uint16_t
 
     /*
     if(pci_get_device_type(pci_dev) == PCI_TYPE_BRIDGE){
-        pci_scan_bus_for_type(dev_type, pci_get_secondary_bus(pci_dev));
-    }
-    */
-    
-    if(dev_type == pci_get_device_type(pci_dev))
-        return pci_dev;
-
-    return pci_null_dev;
-}
-
-static pci_dev_t pci_scan_device_for_type(uint16_t dev_type, uint8_t bus, uint8_t dev)
-{
-    pci_dev_t pci_dev = { 0 };
-    pci_dev.device_num = dev;
-    pci_dev.bus_num = bus;
-
-    if(pci_read(pci_dev, PCI_VENDOR_ID) == PCI_VENDOR_NONE)
-        return pci_null_dev;
-
-    pci_dev_t ret = pci_check_function_for_type(0, dev, dev_type, bus);
-    
-    if(ret.bits)
-        return ret;
-
-    for(int func = 1; func < PCI_FUNCTIONS_ON_DEVICE; func++){
-        if(pci_read(pci_dev, PCI_VENDOR_ID) != PCI_VENDOR_NONE){
-            ret = pci_check_function_for_type(func, dev, dev_type, bus);
-            if(ret.bits)
-                return ret;
-        }
-    }
-    
-    return pci_null_dev;
-}
-
-static pci_dev_t pci_scan_bus_for_type(uint16_t dev_type, uint8_t bus)
-{
-    for(int dev = 0; dev < PCI_DEVICES_ON_BUS; dev++){
-        pci_dev_t ret = pci_scan_device_for_type(dev_type, bus, dev);
-        
-        if(ret.bits)
-            return ret;
-    }
-    
-    return pci_null_dev;
-}
-
-// Temporary declaration
-static pci_dev_t pci_scan_bus_for_id(uint8_t bus, uint16_t dev_id, uint16_t ven_id, uint16_t dev_type);
-
-static pci_dev_t pci_check_function_for_id(uint8_t func, uint8_t dev, uint16_t dev_type, uint16_t dev_id, uint16_t ven_id, uint8_t bus)
-{
-    pci_dev_t pci_dev = { 0 };
-    pci_dev.device_num = dev;
-    pci_dev.bus_num = bus;
-    pci_dev.function_num = func;
-
-    /*
-    if(pci_get_device_type(pci_dev) == PCI_TYPE_BRIDGE){
-        pci_scan_bus_for_id(pci_get_secondary_bus(pci_dev), dev_id, ven_id, dev_type);
+        pci_scan_bus(pci_get_secondary_bus(pci_dev), dev_id, ven_id, dev_type);
     }
     */
 
     if(dev_type == 0xffff || dev_type == pci_get_device_type(pci_dev)){
+        if(dev_id == 0xffff && ven_id ==0xffff)
+            return pci_dev;
+
         uint16_t devid = pci_read(pci_dev, PCI_DEVICE_ID);
         uint16_t venid = pci_read(pci_dev, PCI_VENDOR_ID);
 
@@ -142,7 +86,7 @@ static pci_dev_t pci_check_function_for_id(uint8_t func, uint8_t dev, uint16_t d
     return pci_null_dev;
 }
 
-static pci_dev_t pci_scan_device_for_id(uint16_t dev_id, uint16_t ven_id, uint8_t bus, uint8_t dev, uint16_t dev_type)
+static pci_dev_t pci_scan_device(uint16_t dev_id, uint16_t ven_id, uint8_t bus, uint8_t dev, uint16_t dev_type)
 {
     pci_dev_t pci_dev = { 0 };
     pci_dev.device_num = dev;
@@ -151,14 +95,14 @@ static pci_dev_t pci_scan_device_for_id(uint16_t dev_id, uint16_t ven_id, uint8_
     if(pci_read(pci_dev, PCI_VENDOR_ID) == PCI_VENDOR_NONE)
         return pci_null_dev;
 
-    pci_dev_t ret = pci_check_function_for_id(0, dev, dev_type, dev_id, ven_id, bus);
+    pci_dev_t ret = pci_check_function(0, dev, dev_type, dev_id, ven_id, bus);
     
     if(ret.bits)
         return ret;
 
     for(int func = 1; func < PCI_FUNCTIONS_ON_DEVICE; func++){
         if(pci_read(pci_dev, PCI_VENDOR_ID) != PCI_VENDOR_NONE){
-            ret = pci_check_function_for_id(func, dev, dev_type, dev_id, ven_id, bus);
+            ret = pci_check_function(func, dev, dev_type, dev_id, ven_id, bus);
             if(ret.bits)
                 return ret;
         }
@@ -167,10 +111,10 @@ static pci_dev_t pci_scan_device_for_id(uint16_t dev_id, uint16_t ven_id, uint8_
     return pci_null_dev;
 }
 
-static pci_dev_t pci_scan_bus_for_id(uint8_t bus, uint16_t dev_id, uint16_t ven_id, uint16_t dev_type)
+static pci_dev_t pci_scan_bus(uint8_t bus, uint16_t dev_id, uint16_t ven_id, uint16_t dev_type)
 {
     for(int dev = 0; dev < PCI_DEVICES_ON_BUS; dev++){
-        pci_dev_t ret = pci_scan_device_for_id(dev_id, ven_id, bus, dev, dev_type);
+        pci_dev_t ret = pci_scan_device(dev_id, ven_id, bus, dev, dev_type);
         
         if(ret.bits)
             return ret;
@@ -179,9 +123,9 @@ static pci_dev_t pci_scan_bus_for_id(uint8_t bus, uint16_t dev_id, uint16_t ven_
     return pci_null_dev;
 }
 
-pci_dev_t pci_get_device_by_id(uint16_t dev_id, uint16_t ven_id, uint16_t dev_type)
+pci_dev_t pci_get_device(uint16_t dev_id, uint16_t ven_id, uint16_t dev_type)
 {
-    pci_dev_t ret = pci_scan_bus_for_id(0, dev_id, ven_id, dev_type);
+    pci_dev_t ret = pci_scan_bus(0, dev_id, ven_id, dev_type);
     if(ret.bits)
         return ret;
 
@@ -192,7 +136,7 @@ pci_dev_t pci_get_device_by_id(uint16_t dev_id, uint16_t ven_id, uint16_t dev_ty
         if(pci_read(dev, PCI_VENDOR_ID) == PCI_VENDOR_NONE)
             break;
 
-        ret = pci_scan_bus_for_id(func, dev_id, ven_id, dev_type);
+        ret = pci_scan_bus(func, dev_id, ven_id, dev_type);
         if(ret.bits)
             return ret;
     }
@@ -202,23 +146,7 @@ pci_dev_t pci_get_device_by_id(uint16_t dev_id, uint16_t ven_id, uint16_t dev_ty
 
 pci_dev_t pci_get_device_by_type(uint16_t dev_type)
 {
-    pci_dev_t ret = pci_scan_bus_for_type(dev_type, 0);
-    if(ret.bits)
-        return ret;
-
-    for(int func = 1; func < PCI_FUNCTIONS_ON_DEVICE; func++){
-        pci_dev_t dev = { 0 };
-        dev.function_num = func;
-
-        if(pci_read(dev, PCI_VENDOR_ID) == PCI_VENDOR_NONE)
-            break;
-
-        ret = pci_scan_bus_for_type(dev_type, func);
-        if(ret.bits)
-            return ret;
-    }
-
-    return pci_null_dev;
+    pci_get_device(-1, -1, dev_type);
 }
 
 static void pci_size_map_init()
