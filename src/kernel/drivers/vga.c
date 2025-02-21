@@ -90,6 +90,9 @@ void scrputs(const char* data)
 
 void scrputc(char c)
 {
+	if(terminal_row + 1 == VGA_HEIGHT)
+		scroll_terminal(1);
+
 	switch (c){
 		case '\x7f':
 		case '\b':
@@ -108,11 +111,11 @@ void scrputc(char c)
 				terminal_row++;
 			}
 
-			if(terminal_row + 1 == VGA_HEIGHT)
-				scroll_terminal(1);
-
 			break;
 	}
+
+	if(terminal_row + 1 == VGA_HEIGHT)
+		scroll_terminal(1);
 
 	update_cursor(terminal_column, terminal_row);
 }

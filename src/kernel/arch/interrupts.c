@@ -43,8 +43,6 @@ void isr_handler(registers_t regs)
 		
 		EOI(regs.int_no);
 	}
-
-	
 }
 
 void install_interrupt_handler(uint8_t vector, isr_t handler)
