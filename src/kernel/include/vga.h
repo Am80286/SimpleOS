@@ -36,6 +36,8 @@ void set_terminal_color(uint8_t color);
 
 void write_terminal(const char* data, size_t size);
 
+void scroll_terminal(uint16_t lines);
+
 void scrputs(const char* data);
 
 void scrputc(char c);

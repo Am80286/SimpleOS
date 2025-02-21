@@ -27,6 +27,8 @@ int itohex(uint32_t n, char s[]);
 
 void* memset(void *dest, int val, int n);
 
+void memcpy(void *src,  void *dest, size_t n);
+
 int vsprintf(char *buff, const char *fmt, va_list args);
 
 #endif

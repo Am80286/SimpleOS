@@ -3,6 +3,8 @@
 #include <stdarg.h>
 #include <libc.h>
 
+#include <vga.h>
+
 size_t strlen(const char* str)
 {
 	size_t len = 0;
@@ -77,7 +79,7 @@ inline int htoi(char s[])
     return n;
 }
 
-int atoi(const char *s)
+inline int atoi(const char *s)
 {
 	int n = 0; 
 	int negative = 0;
@@ -145,15 +147,34 @@ inline void* memset(void *dest, int val, int n)
 	uint32_t val32      = val|(val << 8) | (val << 16) | (val << 24);
 	uint32_t i;
 
-	for (i=0; i < num_dwords; i++){
+	for(i = 0; i < num_dwords; i++){
 		dest32[i] = val32;
 	}
 
-	for (i=0; i < num_bytes; i++){
+	for(i = 0; i < num_bytes; i++){
 		dest8[i] = val8;
 	}
 
 	return dest;
+}
+
+inline void memcpy(void *src,  void *dest, size_t n)
+{
+    uint32_t num_dwords = n / 4;
+    uint32_t num_bytes  = n % 4;
+    uint32_t* dest32    = (uint32_t*) dest;
+    uint8_t* dest8      = ((uint8_t*) dest) + num_dwords * 4;
+    uint32_t* src32     = (uint32_t*) src;
+    uint8_t* src8       = ((uint8_t*) dest) + num_dwords * 4;
+    uint32_t i;
+
+    for(i = 0; i < num_dwords; i++){
+        dest32[i] = src32[i];
+    }
+
+    for(i = 0; i < num_bytes; i++){
+        dest8[i] = src8[i];
+    }
 }
 
 // A very simple sprintf implementation

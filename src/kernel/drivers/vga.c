@@ -5,8 +5,8 @@
 #include <arch/io.h>
 #include <vga.h>
 
-size_t terminal_row;
-size_t terminal_column;
+uint16_t terminal_row;
+uint16_t terminal_column;
 uint8_t terminal_color;
 uint16_t* terminal_buffer;
 
@@ -23,7 +23,7 @@ static inline uint16_t vga_entry(unsigned char uc, uint8_t color)
 }
 
 
-void put_entry_at_terminal(char c, uint8_t color, size_t x, size_t y) 
+static void put_entry_at_terminal(char c, uint8_t color, size_t x, size_t y) 
 {
 	const size_t index = y * VGA_WIDTH + x;
 	terminal_buffer[index] = vga_entry(c, color);
@@ -37,6 +37,24 @@ void update_cursor(int x, int y)
 	outb(0x3D5, (uint8_t) (pos & 0xFF));
 	outb(0x3D4, 0x0E);
 	outb(0x3D5, (uint8_t) ((pos >> 8) & 0xFF));
+}
+
+volatile void scroll_terminal(uint16_t lines)
+{
+	if(lines < 1)
+		return;
+
+	memset(terminal_buffer + VGA_WIDTH * VGA_HEIGHT, 0, VGA_WIDTH);
+	
+	for(uint16_t i = 0; i < lines; i++){
+		for(int i = 1; i <= VGA_HEIGHT; i++){
+			memcpy(terminal_buffer + VGA_WIDTH * i, terminal_buffer + VGA_WIDTH * (i - 1), VGA_WIDTH);
+		}
+		
+		terminal_row--;
+	}
+
+	update_cursor(terminal_column, terminal_row);
 }
 
 void write_terminal(const char* data, size_t size)
@@ -84,12 +102,15 @@ void scrputc(char c)
 			break;
 		default:
 			put_entry_at_terminal(c, terminal_color, terminal_column, terminal_row);
-		
-			if (++terminal_column == VGA_WIDTH) {
-			terminal_column = 0;
-			if (++terminal_row == VGA_HEIGHT)
-				terminal_row = 0;
+			
+			if(++terminal_column == VGA_WIDTH){
+				terminal_column = 0;
+				terminal_row++;
 			}
+
+			if(terminal_row + 1 == VGA_HEIGHT)
+				scroll_terminal(1);
+
 			break;
 	}
 
