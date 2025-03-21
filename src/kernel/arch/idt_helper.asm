@@ -82,7 +82,7 @@
     isr_common_stub:
         pusha                    ; Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
 
-        mov ax, ds               ; Lower 16-bits of eax = ds.
+        mov ax, ds
         push eax                 ; save the data segment descriptor
 
         mov ax, 0x10  ; load the kernel data segment descriptor
@@ -108,10 +108,8 @@
 [global page_fault_stub]
     page_fault_stub:
         pusha                    ; Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
-        mov eax, cr2            
-        push eax                 ; Pass the cr2 as an argument
 
-        mov ax, ds               ; Lower 16-bits of eax = ds.
+        mov ax, ds
         push eax                 ; save the data segment descriptor
 
         mov ax, 0x10  ; load the kernel data segment descriptor
@@ -119,6 +117,9 @@
         mov es, ax
         mov fs, ax
         mov gs, ax
+
+        mov eax, cr2
+        push eax                 ; Pass cr2 as an argument
 
         call page_fault_handler
 
@@ -129,7 +130,7 @@
         mov gs, ax
 
         popa
-        add esp, 9     ; Cleans up the pushed error code and pushed ISR number
+        add esp, 8     ; Cleans up the pushed error code and pushed ISR number
         sti
         iret           ; pops 5 things at once: CS, EIP, EFLAGS, SS, and ESP
 

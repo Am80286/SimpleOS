@@ -4,6 +4,6 @@
 
 volatile void panic(const char* msg)
 {
-    scrprintf("!!! Kernel Panic !!!\n", msg);
+    scrprintf("!!! Kernel Panic !!! \n%s\n", msg);
     while (1);
 }
