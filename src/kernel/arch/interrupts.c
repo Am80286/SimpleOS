@@ -38,7 +38,7 @@ void isr_handler(registers_t regs)
 	if (regs.int_no >= 32) {
 		if (interrupt_handlers[regs.int_no] != 0){
 			isr_t handler = interrupt_handlers[regs.int_no];
-			handler(regs);
+			handler(&regs);
 		}
 		
 		EOI(regs.int_no);
