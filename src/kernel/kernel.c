@@ -1,5 +1,5 @@
 #include <arch/gdt.h>
-#include <arch/interrupts.h>
+#include <arch/idt.h>
 #include <vga.h>
 #include <serial.h>
 #include <config.h>

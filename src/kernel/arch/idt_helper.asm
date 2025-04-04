@@ -104,36 +104,6 @@
         sti
         iret           ; pops 5 things at once: CS, EIP, EFLAGS, SS, and ESP
 
-[extern page_fault_handler]
-[global page_fault_stub]
-    page_fault_stub:
-        pusha                    ; Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
-
-        mov ax, ds
-        push eax                 ; save the data segment descriptor
-
-        mov ax, 0x10  ; load the kernel data segment descriptor
-        mov ds, ax
-        mov es, ax
-        mov fs, ax
-        mov gs, ax
-
-        mov eax, cr2
-        push eax                 ; Pass cr2 as an argument
-
-        call page_fault_handler
-
-        pop eax        ; reload the original data segment descriptor
-        mov ds, ax
-        mov es, ax
-        mov fs, ax
-        mov gs, ax
-
-        popa
-        add esp, 8     ; Cleans up the pushed error code and pushed ISR number
-        sti
-        iret           ; pops 5 things at once: CS, EIP, EFLAGS, SS, and ESP
-
 [global idt_flush]
     idt_flush:
         mov eax, [esp+4]  ; Get the pointer to the IDT, passed as a parameter.

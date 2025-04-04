@@ -1,4 +1,4 @@
-#include <arch/interrupts.h>
+#include <arch/idt.h>
 #include <arch/io.h>
 #include <arch/pic.h>
 #include <stdint.h>
@@ -28,14 +28,12 @@ static void idt_set_descriptor(uint8_t vector, void* isr, uint8_t flags)
 
 void isr_handler(registers_t regs)
 {
-	if (regs.int_no >= 32) {
-		if (interrupt_handlers[regs.int_no] != 0){
-			isr_t handler = interrupt_handlers[regs.int_no];
-			handler(&regs);
-		}
-		
-		EOI(regs.int_no);
-	}
+	if (interrupt_handlers[regs.int_no] != 0){
+        isr_t handler = interrupt_handlers[regs.int_no];
+        handler(&regs);
+    }
+
+    EOI(regs.int_no);
 }
 
 void install_interrupt_handler(uint8_t vector, isr_t handler)
@@ -48,13 +46,9 @@ static void init_idt()
     idtr.base = (uintptr_t)&idt[0];
     idtr.limit = (uint16_t)sizeof(idt_entry_t) * 256 - 1;
 
-	// Initializing protected mode exceptions
-    for (uint8_t vector = 0; vector < 48; vector++) {
+    for (uint8_t vector = 0; vector < 48; vector++){
         idt_set_descriptor(vector, isr_stub_table[vector], 0x8E);
-        // vectors[vector] = true;
     }
-
-	idt_set_descriptor(14, &page_fault_stub, 0x8E); // Install the page fault handler
 
     idt_flush((uint32_t)&idtr);
 }

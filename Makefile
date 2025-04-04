@@ -43,7 +43,7 @@ KERNEL_BOOTLOADER_ASM_FLAGS=-f elf
 KERNEL_CC_FLAGS=-march=i386 -ffreestanding -m32 -fpic -fno-pie -fno-pic -pipe -O2 -Wall -nostdlib -fstack-protector -I$(KERNEL_INCLUDE_DIR)
 
 KERNEL_OBJS  = 	$(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/vga.o $(BUILD_DIR)/io.o \
-				$(BUILD_DIR)/libc.o $(BUILD_DIR)/serial.o $(BUILD_DIR)/idt_helper.o $(BUILD_DIR)/interrupts.o \
+				$(BUILD_DIR)/libc.o $(BUILD_DIR)/serial.o $(BUILD_DIR)/idt_helper.o $(BUILD_DIR)/idt.o \
 				$(BUILD_DIR)/gdt.o $(BUILD_DIR)/gdt_helper.o $(BUILD_DIR)/vmm.o $(BUILD_DIR)/panic.o \
 				$(BUILD_DIR)/ata.o $(BUILD_DIR)/pci.o $(BUILD_DIR)/ssp.o $(BUILD_DIR)/keyboard.o $(BUILD_DIR)/pmm.o \
 				$(BUILD_DIR)/bitset.o $(BUILD_DIR)/pic.o

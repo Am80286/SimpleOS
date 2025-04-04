@@ -2,7 +2,7 @@
 #include <pmm.h>
 #include <stdint.h>
 #include <libc.h>
-#include <arch/interrupts.h>
+#include <arch/idt.h>
 #include <kernel.h>
 #include <vga.h>
 
@@ -11,7 +11,6 @@ static void* placement_address;
 static int kheap_initialized = 0;
 
 static page_dir_t* kernel_page_dir;
-
 
 void* virt2phys(page_dir_t* dir, void* virtual_addr) 
 {
@@ -136,24 +135,10 @@ static void enable_paging()
     asm volatile("mov %0, %%cr0" :: "r"(cr0));
 }
 
-void init_vmm()
+void page_fault_handler(registers_t* regs)
 {
-    placement_address = pmm_bitmap + pmm_bitmap_size;
-
-    kernel_page_dir = placement_kmalloc(sizeof(page_dir_t), 1);
-    memset(kernel_page_dir, 0, sizeof(page_dir_t));
-
-    alloc_range(kernel_page_dir, 0x0, 0x200000, 1, 1);
-
-    switch_page_dir(kernel_page_dir);
-    
-    enable_paging();
-}
-
-// Called in the page_fault_stub in idt_helper.asm
-void page_fault_handler(registers_t* regs, uint32_t cr2)
-{
-    uint32_t fault_addr = cr2;
+    uint32_t fault_addr;
+    asm volatile("mov %%cr2, %0" : "=r"(fault_addr));
 
     // Gathering info about the fault
     int present   = !(regs->err_code & 0x1);          // Page not present
@@ -187,3 +172,18 @@ void page_fault_handler(registers_t* regs, uint32_t cr2)
     panic("");
 }
 
+void init_vmm()
+{
+    placement_address = pmm_bitmap + pmm_bitmap_size;
+
+    kernel_page_dir = placement_kmalloc(sizeof(page_dir_t), 1);
+    memset(kernel_page_dir, 0, sizeof(page_dir_t));
+
+    alloc_range(kernel_page_dir, 0x0, 0x200000, 1, 1);
+
+    switch_page_dir(kernel_page_dir);
+
+    install_interrupt_handler(14, &page_fault_handler);
+    
+    enable_paging();
+}
