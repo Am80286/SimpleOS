@@ -1,8 +1,12 @@
-[bits 16]
-[section .data]
-    READ_LBA_LOW_BUFFER_SEG                             equ         0x1000
+%include "fatfs.inc"
+%include "error.inc"
 
+READ_LBA_LOW_BUFFER_SEG                             equ         0x1000
+
+[bits 16]
 [section .text]
+
+[global READ_LBA_EXTENDED]
     READ_LBA_EXTENDED: ; same as READ_LBA, but can read into extended memory (uses unreal mode)
         pushad
         push cx  ; CX - amount of sectors to read
@@ -62,6 +66,7 @@
         popad
         ret
 
+[global READ_LBA]
     READ_LBA:
         pusha
         push cx ; CX - amount of sectors to read
@@ -101,6 +106,7 @@
         popa
         ret
 
+[global WRITE_LBA]
     WRITE_LBA:
         pusha
         push cx ; CX - amount of sectors to read

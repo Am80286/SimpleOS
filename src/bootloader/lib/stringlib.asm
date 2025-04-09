@@ -1,5 +1,13 @@
+%include "error.inc"
+
+[section .data]
+    BOOL_TRUE                                    db          "true"
+    BOOL_FALSE                                   db          "false"
+
 [bits 16]
 [section .text]
+
+[global HEX_STRING_TO_NUM]
     HEX_STRING_TO_NUM:    ; DS:SI - string pointer, EDX - result
         push eax                ; the same as HEX_WORD_STING_TO_NUM, but for dword values
         push ebx                ; again I don't like how it's implemeted
@@ -61,6 +69,7 @@
         pop eax
         ret
 
+[global DEC_STRING_TO_NUM]
     DEC_STRING_TO_NUM: ; DS:SI - string pointer, EDX - result
         push eax             ; This implementation is still not the best
         push ebx             ; gonna have to rewrite it later
@@ -115,20 +124,21 @@
         pop eax
         ret
 
+[global BOOL_STRING_TO_NUM]
     BOOL_STRING_TO_NUM: ; DS:SI - string pointer, DL - result
         push cx
         push si
         push di
 
         mov cx, 4
-        mov di, CONFIG_BOOL_TRUE
+        mov di, BOOL_TRUE
         push si
         repe cmpsb
         pop si
         je .true
 
         mov cx, 5
-        mov di, CONFIG_BOOL_FALSE
+        mov di, BOOL_FALSE
         repe cmpsb
         je .false
 
@@ -147,6 +157,7 @@
         pop cx
         ret
 
+[global STRING_TO_FAT_FILENAME]
     STRING_TO_FAT_FILENAME: ; DS:SI - string pointer, ES:DI - output buffer pointer
         pusha               ; A little janky as well, needs much better error handling
         xor cx, cx          ; But I'm in a little bit of a rush, so it's okay for now

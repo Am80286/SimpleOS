@@ -11,39 +11,15 @@
 ;    You should have received a copy of the GNU General Public License along with SimpleOS. 
 ;    If not, see <https://www.gnu.org/licenses/>.
 
-; A macro for printing \n
-%macro NEWLINE 1
-    mov ah, 0x0e
-    mov al, ENDL
-    %rep %1
-        int 10h
-    %endrep
-    mov al, RETC
-    %rep %1
-       int 10h
-    %endrep
-%endmacro
-
-; A imple macro for printing spaces
-%macro SPACE 1
-    mov ah, 0x0e
-    mov al, ' '
-    %rep %1
-        int 10h
-    %endrep
-%endmacro
-
-; Another simple macor for printing a specific character
-%macro PCHAR 2
-    mov ah, 0x0e
-    mov al, $1
-    %rep %2
-        int 10h
-    %endrep
-%endmacro
-
-RETC                                                equ         0x0D
-ENDL                                                equ         0x0A
+%include "screen.inc"
+%include "pcspk.inc"
+%include "fatfs.inc"
+%include "unreal.inc"
+%include "gate_a20.inc"
+%include "linux16.inc"
+%include "system.inc"
+%include "stringlib.inc"
+%include "error.inc"
 
 VAR_TABLE_TERMINATOR                                equ         0xFC88
 
@@ -51,44 +27,12 @@ KERNEL_TABLE_TERMINATOR                             equ         0xFC99
 KERNEL_ENTRY_SIZE                                   equ         139     ; TODO: make auto detection for this value
 KERNEL_ENTRY_SIG                                    equ         0
 
-CONFIG_FILE_POINTER                                 equ         BUFFER + 512 ; +512 because this is a buffer for FAT sectors
+CONFIG_FILE_POINTER                                 equ         end + 512 ; +512 because this is a buffer for FAT sectors
 
-FAT_SECTOR_BUFFER_POINTER                           equ         BUFFER
-
-BOOTLOADER_DS                                       equ         0x0000
-BOOTLOADER_CS                                       equ         0x0800
-
-[org 0x8000]
+;[org 0x8000]
 [section .data]
     ; no memory manager so the spcae for the mbr has to preallocated here
     ; all the values are placeholders and get overwritten
-
-DISK_MBR_START:
-
-    times 3                                             db          0xff
-    BS_OEMName                                          db          "MSWIN4.1"
-    BPB_BytesPerSec                                     dw          512
-    BPB_SecPerClus                                      db          16
-    BPB_RsvdSecCnt                                      dw          16
-    BPB_FatNum                                          db          2
-    BPB_RootEntCnt                                      dw          512
-    BPB_TotalSecCnt16                                   dw          0
-    BPB_Media_Desc_Type                                 db          0xf8
-    BPB_SecPerFat                                       dw          256
-    BPB_SecPerTrack                                     dw          63
-    BPB_Heads                                           dw          32
-    BPB_HiddenSectors                                   dd          0
-    BPB_TotSecCnt32                                     dd          1048576
-
-    EBR_BootDrvNumber                                   db          0
-                                                        db          0
-    EBR_Signature                                       db          0x29
-    EBR_VolumeId                                        db          0xFF, 0xFF,0xFF, 0xFF
-    EBR_VolumeLbl                                       db          "NO NAME "
-    EBR_SysId                                           db          "FAT16   "
-    times 512 - 59                                      db          0            ; (0_0)
-
-DISK_MBR_END:
 
     BOOT_BEEP_ENABLE                                    db          0
     BOOT_STRING_COLOR                                   db          0x1f ; BIOS color attribute https://en.wikipedia.org/wiki/BIOS_color_attributes
@@ -97,58 +41,17 @@ DISK_MBR_END:
     AUTOBOOT_ENTRY                                      db          0
 
     BANNER                                              db          "-================================-", " SimpleBoot ", "-======================= ", "v0.1", " ===-", 0
-    HEX_PREFIX                                          db          "0x", 0
-    CRIT_ERROR_MSG                                      db          "Critical error encountered!", RETC, ENDL, "Can't continue...", ENDL, RETC, 0
-    ANY_KEY_TO_REBOOT_MSG                               db          ENDL, RETC, "Press any key to reboot...", ENDL, RETC, 0
     BOOT_MENU_MSG                                       db          ENDL, RETC, "  Available Kernels:", ENDL, RETC, ENDL, RETC, 0
     INVALID_INPUT_MSG                                   db          "Invald input!", 0
     BOOTING_KERNEL_MSG                                  db          "Booting selected kernel...", 0
     KENREL_PATH_MSG                                     db          ENDL, RETC, "  Path: ", 0
-    CRASH_DUMP_MSG                                      db          ENDL, RETC, "Crash Dump: ", ENDL, RETC, ENDL, RETC, 0
-    EAX_MSG                                             db          "EAX: ", 0
-    EBX_MSG                                             db          "EBX: ", 0
-    ECX_MSG                                             db          "ECX: ", 0
-    EDX_MSG                                             db          "EDX: ", 0
-    ESI_MSG                                             db          "ESI: ", 0
-    EDI_MSG                                             db          "EDI: ", 0
-    CS_MSG                                              db          "CS:  ", 0
-    DS_MSG                                              db          ENDL, RETC, "DS:  ", 0
-    ES_MSG                                              db          "ES:  ", 0
-    ESP_MSG                                             db          ENDL, RETC, "ESP: ", 0
-    EBP_MSG                                             db          "EBP: ", 0
-
-    LBA_READ_ERROR_MSG                                  db          "Could not read LBA from disk: ", 0
-    FILE_NOT_FOUND_ERROR_MSG                            db          "Could not find file", ENDL, RETC, 0
-    DRIVE_INIT_ERROR_MSG                                db          "Drive initialization error", ENDL, RETC, 0
-    DRIVE_NOT_READY_ERROR_MS                            db          "Drive not ready", ENDL, RETC, 0
-    INVALID_COMMAND_ERROR_MSG                           db          "Invalid command", ENDL, RETC, 0
-    SECOTR_NOT_FOUND_ERROR_MSG                          db          "Secotor not found", ENDL, RETC, 0
-    INVALID_SECTOR_COUNT_ERROR_MSG                      db          "Invalid secotr count", ENDL, RETC, 0
-    SEEK_FAILURE_ERROR_MSG                              db          "Seek failure", ENDL, RETC, 0
-    CONTROLLER_FAILURE_ERROR_MSG                        db          "Controller failure", ENDL, RETC, 0
-    UNDEFINED_ERROR_MSG                                 db          "Undefined error", ENDL, RETC, 0
 
     LOADING_MSG                                         db          "Loading.....", 0
     
     CONFIG_MENU_ENTRY_DECLARATOR                        db          "menu_entry_start:"
-    CONFIG_BOOL_TRUE                                    db          "true"
-    CONFIG_BOOL_FALSE                                   db          "false"
 
-    BOOT_DISK                                           db          0
     BOOT_CONFIG_FILE_PATH                               db          "/boot/boot.cfg", 0
     BOOT_BANNER_FILE_PATH times 64                      db          0
-
-    PREVIOUS_FAT_SECTOR                                 dw          0
-    DISK_DATA_START_SEC                                 dw          0
-    FILE_SIZE                                           dd          0
-    FILE_CLUSTER                                        dw          0
-
-    ; A variable that describes the filesystem type
-    ; 0x01 - FAT 12
-    ; 0x02 - FAT 16
-    ; 0x03 - FAT 32
-
-    DISK_FS_TYPE                                        db          0
 
     KERNEL_TABLE_POINTER                                dw          0
     KERNEL_ENTRY_COUNTER                                dw          0
@@ -235,36 +138,6 @@ VAR_TABLE_START:
 
 VAR_TABLE_END:                                          dw          VAR_TABLE_TERMINATOR
 
-; Unreal Mode GDT
-
-UNRAEL_CODE_SEG                                         equ         UNREAL_GDT_CODE - UNREAL_GDT_START
-UNREAL_FLAT_SEG                                         equ         UNREAL_GDT_FLAT - UNREAL_GDT_START
-
-UNREAL_GDT_START:
-    dq 0x0
-
-UNREAL_GDT_CODE:
-    dw 0xffff
-    dw 0x0
-    db 0x0
-    db 10011010b
-    db 00000000b
-    db 0
-
-UNREAL_GDT_FLAT:
-    dw 0xffff
-    dw 0x0
-    db 0x0
-    db 10010010b
-    db 11001111b
-    db 0
-
-UNREAL_GDT_END:
-
-UNREAL_PMODE_GDT_DESCRIPTOR:
-    dw UNREAL_GDT_END - UNREAL_GDT_START - 1
-    dd UNREAL_GDT_START
-
 ; Protected Mode GDT
 PMODE_CODE_SEG                                            equ         PMODE_GDT_CODE - PMODE_GDT_START
 PMODE_DATA_SEG                                            equ         PMODE_GDT_DATA - PMODE_GDT_START
@@ -300,14 +173,11 @@ PMODE_GDT_DESCRIPTOR:
     CONFIG_VAR_NAME_BUFFER times 32                     db          0
     CONFIG_VAR_STRING_VAL_BUFFER times 64               db          0
 
-    FILE_NAME_BUFFER times 16                           db          0
-    FAT_FILENAME_BUFFER times 16                        db          0
-
-    BUFFER:
-
 [bits 16]
 [CPU 386]
 [section .text]
+
+[global BOOT_START]
     BOOT_START:
         xor ax, ax
         mov es, ax
@@ -316,12 +186,10 @@ PMODE_GDT_DESCRIPTOR:
         mov fs, ax
         mov ss, ax
 
-        mov byte[BOOT_DISK], dl
+        call INIT_BOOT_DISK
 
         mov al, dl      ; For debugging
         out 0x80, al    ; Outputs the boot disk number to the POST port
-
-        call INIT_BOOT_DISK
 
         call ENABLE_A20
 
@@ -884,17 +752,6 @@ PMODE_GDT_DESCRIPTOR:
     .done:
         popad
         ret
-
-%include "unreal.asm"
-%include "error.asm"
-%include "diskio.asm"
-%include "pcspk.asm"
-%include "fatfs.asm"
-%include "stringlib.asm"
-%include "gate_a20.asm"
-%include "screen.asm"
-%include "linux16.asm"
-%include "memmap.asm"
 
 ;
 ;

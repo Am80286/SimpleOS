@@ -1,0 +1,4 @@
+[extern HEX_STRING_TO_NUM]
+[extern DEC_STRING_TO_NUM]
+[extern BOOL_STRING_TO_NUM]
+[extern STRING_TO_FAT_FILENAME]

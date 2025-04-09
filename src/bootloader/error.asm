@@ -1,5 +1,38 @@
+%include "screen.inc"
+%include "pcspk.inc"
+%include "system.inc"
+
+[section .data]
+    CRIT_ERROR_MSG                                      db          "Critical error encountered!", RETC, ENDL, "Can't continue...", ENDL, RETC, 0
+    ANY_KEY_TO_REBOOT_MSG                               db          ENDL, RETC, "Press any key to reboot...", ENDL, RETC, 0
+    CRASH_DUMP_MSG                                      db          ENDL, RETC, "Crash Dump: ", ENDL, RETC, ENDL, RETC, 0
+    EAX_MSG                                             db          "EAX: ", 0
+    EBX_MSG                                             db          "EBX: ", 0
+    ECX_MSG                                             db          "ECX: ", 0
+    EDX_MSG                                             db          "EDX: ", 0
+    ESI_MSG                                             db          "ESI: ", 0
+    EDI_MSG                                             db          "EDI: ", 0
+    CS_MSG                                              db          "CS:  ", 0
+    DS_MSG                                              db          ENDL, RETC, "DS:  ", 0
+    ES_MSG                                              db          "ES:  ", 0
+    ESP_MSG                                             db          ENDL, RETC, "ESP: ", 0
+    EBP_MSG                                             db          "EBP: ", 0
+
+    LBA_READ_ERROR_MSG                                  db          "Could not read LBA from disk: ", 0
+    FILE_NOT_FOUND_ERROR_MSG                            db          "Could not find file", ENDL, RETC, 0
+    DRIVE_INIT_ERROR_MSG                                db          "Drive initialization error", ENDL, RETC, 0
+    DRIVE_NOT_READY_ERROR_MS                            db          "Drive not ready", ENDL, RETC, 0
+    INVALID_COMMAND_ERROR_MSG                           db          "Invalid command", ENDL, RETC, 0
+    SECOTR_NOT_FOUND_ERROR_MSG                          db          "Secotor not found", ENDL, RETC, 0
+    INVALID_SECTOR_COUNT_ERROR_MSG                      db          "Invalid secotr count", ENDL, RETC, 0
+    SEEK_FAILURE_ERROR_MSG                              db          "Seek failure", ENDL, RETC, 0
+    CONTROLLER_FAILURE_ERROR_MSG                        db          "Controller failure", ENDL, RETC, 0
+    UNDEFINED_ERROR_MSG                                 db          "Undefined error", ENDL, RETC, 0
+
 [bits 16]
-[section .text]   
+[section .text]
+
+[global CRIT_ERROR]
     CRIT_ERROR:
         push es
         push ds
@@ -89,17 +122,20 @@
         int 16h
         jmp 0xffff:0
 
+[global FILE_NOT_FOUND_ERROR]
     FILE_NOT_FOUND_ERROR:
         mov si, FILE_NOT_FOUND_ERROR_MSG
         call PRINT
 
         jmp CRIT_ERROR
 
+[global LBA_READ_ERROR]
     LBA_READ_ERROR:
         mov si, LBA_READ_ERROR_MSG
         call PRINT
         jmp INT13H_ERROR_CODES
 
+[global DRIVE_INIT_ERROR]
      DRIVE_INIT_ERROR:   
         mov si, DRIVE_INIT_ERROR_MSG
         call PRINT

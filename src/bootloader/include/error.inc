@@ -1,0 +1,4 @@
+[extern CRIT_ERROR]
+[extern LBA_READ_ERROR]
+[extern FILE_NOT_FOUND_ERROR]
+[extern DRIVE_INIT_ERROR]

@@ -1,5 +1,9 @@
+%include "error.inc"
+
 [bits 16]
 [section .text]
+
+[global ENABLE_A20]
     ENABLE_A20:
         pusha
 

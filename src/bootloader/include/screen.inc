@@ -1,0 +1,6 @@
+[extern INIT_SCRREEN]
+[extern CLEAR_SCREEN]
+[extern PRINT]
+[extern PRINT_TXT]
+[extern PRINT_HEX]
+[extern PRINT_DEC]

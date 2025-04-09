@@ -1,3 +1,5 @@
+%include "fatfs.inc"
+
 LINUX_ZIMAGE_BOOTSEC_ADDR                           equ         0x90000      ; from the Linux x86 Boot Protocl specification
 LINUX_ZIMAGE_SETUP_ADDR                             equ         0x90200      ; from the spec as well
 LINUX_ZIMAGE_SETUP_SEG                              equ         0x9020      ; from the spec as well
@@ -8,6 +10,8 @@ LINUX_ZIMAGE_HIGH_BUFFER_ADDR                       equ         0x200000
 
 [bits 16]
 [section .text]
+
+[global LINUX_16_LOAD]
     LINUX_16_LOAD: ; must be called form the main loader.asm
         pop si     ; I mighr relocate this to loader.asm, but I'm not sure
         add si, 64 ; get the kernel path

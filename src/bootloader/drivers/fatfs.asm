@@ -1,3 +1,62 @@
+%include "diskio.inc"
+%include "stringlib.inc"
+%include "error.inc"
+%include "system.inc"
+
+FAT_SECTOR_BUFFER_POINTER                           equ         end
+
+[section .data]
+
+[global BPB_BytesPerSec]
+[global BPB_Heads]
+[global BPB_SecPerTrack]
+DISK_MBR_START:
+
+    times 3                                             db          0xff
+    BS_OEMName                                          db          "MSWIN4.1"
+    BPB_BytesPerSec                                     dw          512
+    BPB_SecPerClus                                      db          16
+    BPB_RsvdSecCnt                                      dw          16
+    BPB_FatNum                                          db          2
+    BPB_RootEntCnt                                      dw          512
+    BPB_TotalSecCnt16                                   dw          0
+    BPB_Media_Desc_Type                                 db          0xf8
+    BPB_SecPerFat                                       dw          256
+    BPB_SecPerTrack                                     dw          63
+    BPB_Heads                                           dw          32
+    BPB_HiddenSectors                                   dd          0
+    BPB_TotSecCnt32                                     dd          1048576
+
+    EBR_BootDrvNumber                                   db          0
+                                                        db          0
+    EBR_Signature                                       db          0x29
+    EBR_VolumeId                                        db          0xFF, 0xFF,0xFF, 0xFF
+    EBR_VolumeLbl                                       db          "NO NAME "
+    EBR_SysId                                           db          "FAT16   "
+    times 512 - 59                                      db          0            ; (0_0)
+
+DISK_MBR_END:
+
+[global BOOT_DISK]
+    BOOT_DISK                                           db          0
+
+    PREVIOUS_FAT_SECTOR                                 dw          0
+    DISK_DATA_START_SEC                                 dw          0
+
+[global FILE_SIZE]
+    FILE_SIZE                                           dd          0
+
+    FILE_CLUSTER                                        dw          0
+
+    ; A variable that describes the filesystem type
+    ; 0x01 - FAT 12
+    ; 0x02 - FAT 16
+    ; 0x03 - FAT 32
+    DISK_FS_TYPE                                        db          0
+
+    FILE_NAME_BUFFER times 16                           db          0
+    FAT_FILENAME_BUFFER times 16                        db          0
+
 [bits 16]
 [section .text]
     ; This is a function made for reading a file by it's absoulte unix style path.
@@ -5,6 +64,7 @@
     ; LOAD_FILE_BY_PATH and LOAD_FILE_BY_PATH_EXTENEDED.
     ; DS:SI - pointer to a file path string (unix style), DX:EBX - load adress, ES must equal DS
 
+[global LOAD_FILE_BY_PATH]
     LOAD_FILE_BY_PATH:
         pushad
 
@@ -97,8 +157,11 @@
         popad
         ret
         
-    INIT_BOOT_DISK:
+[global INIT_BOOT_DISK]
+    INIT_BOOT_DISK: ; DL - boot disk number
         pusha
+
+        mov byte[BOOT_DISK], dl
 
         mov ah, 0x02
         mov al, 1

@@ -1,0 +1,1 @@
+[extern ENABLE_A20]

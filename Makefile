@@ -19,6 +19,7 @@ CONFIG_DIR=config
 UTIL_DIR=util
 LDSCRIPTS_DIR=$(SOURCE_DIR)/ldscripts
 KERNEL_INCLUDE_DIR=$(SOURCE_DIR)/kernel/include
+BOOTLOADER_INCLUDE_DIR=$(SOURCE_DIR)/bootloader/include
 
 FS_NAME="SIMPLE_OS"
 DISK_IMAGE_SIZE=512M
@@ -38,8 +39,9 @@ FALLOCATE=fallocate
 DEBUG_QEMU_ARGS= -hda $(BUILD_DIR)/$(DISK_IMAGE) -monitor stdio # -chardev stdio,id=char0,logfile=serial.log,signal=off -serial chardev:char0 #-boot menu=on #-s -S
 RUN_QEMU_ARGS=-fda $(BUILD_DIR)/$(FLOPPY_IMAGE)
 
-BOOTLOADER_ASM_FLAGS=-f bin -i$(SOURCE_DIR)/bootloader/drivers -i$(SOURCE_DIR)/bootloader/lib -i$(SOURCE_DIR)/bootloader/loaders -i$(SOURCE_DIR)/bootloader/pmode -i$(SOURCE_DIR)/bootloader/mem -i$(SOURCE_DIR)/bootloader/
-KERNEL_BOOTLOADER_ASM_FLAGS=-f elf
+MBR_ASM_FLAGS=-f bin
+BOOTLOADER_ASM_FLAGS=-f elf -I$(BOOTLOADER_INCLUDE_DIR)
+KERNEL_ASM_FLAGS=-f elf
 KERNEL_CC_FLAGS=-march=i386 -ffreestanding -m32 -fpic -fno-pie -fno-pic -pipe -O2 -Wall -nostdlib -fstack-protector -I$(KERNEL_INCLUDE_DIR)
 
 KERNEL_OBJS  = 	$(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/vga.o $(BUILD_DIR)/io.o \
@@ -47,6 +49,13 @@ KERNEL_OBJS  = 	$(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/v
 				$(BUILD_DIR)/gdt.o $(BUILD_DIR)/gdt_helper.o $(BUILD_DIR)/vmm.o $(BUILD_DIR)/panic.o \
 				$(BUILD_DIR)/ata.o $(BUILD_DIR)/pci.o $(BUILD_DIR)/ssp.o $(BUILD_DIR)/keyboard.o $(BUILD_DIR)/pmm.o \
 				$(BUILD_DIR)/bitset.o $(BUILD_DIR)/pic.o
+
+BOOTLOADER_OBJS  =  $(BUILD_DIR)/bootloader/diskio.o $(BUILD_DIR)/bootloader/fatfs.o $(BUILD_DIR)/bootloader/pcspk.o \
+					$(BUILD_DIR)/bootloader/screen.o $(BUILD_DIR)/bootloader/stringlib.o $(BUILD_DIR)/bootloader/linux16.o \
+					$(BUILD_DIR)/bootloader/memmap.o $(BUILD_DIR)/bootloader/error.o \
+					$(BUILD_DIR)/bootloader/unreal.o $(BUILD_DIR)/bootloader/gate_a20.o
+
+BOOTLAODER_STARTUP_OBJ = $(BUILD_DIR)/bootloader/loader.o
 
 .PHONY: all image image_floppy image_FAT32 boot boot_stage2 kernel clean always bootupdate debug run
 
@@ -101,19 +110,19 @@ bootupdate:
 
 boot_FAT12: always
 	@echo "[BOOTLOADER]  Compiling Stage 1 FAT12"
-	@$(ASM) $(BOOTLOADER_ASM_FLAGS) $(SOURCE_DIR)/bootloader/boot.asm -o $(BUILD_DIR)/boot.bin -D FAT12
+	@$(ASM) $(MBR_ASM_FLAGS) $(SOURCE_DIR)/bootloader/boot.asm -o $(BUILD_DIR)/boot.bin -D FAT12
 
 boot_FAT16: always
 	@echo "[BOOTLOADER]  Compiling Stage 1 FAT16"
-	@$(ASM) $(BOOTLOADER_ASM_FLAGS) $(SOURCE_DIR)/bootloader/boot.asm -o $(BUILD_DIR)/boot.bin -D FAT16
+	@$(ASM) $(MBR_ASM_FLAGS) $(SOURCE_DIR)/bootloader/boot.asm -o $(BUILD_DIR)/boot.bin -D FAT16
 
 boot_FAT32: always
 	@echo "[BOOTLOADER]  Compiling Stage 1 FAT32"
-	@$(ASM) $(BOOTLOADER_ASM_FLAGS) $(SOURCE_DIR)/bootloader/boot.asm -o $(BUILD_DIR)/boot.bin -D FAT32
+	@$(ASM) $(MBR_ASM_FLAGS) $(SOURCE_DIR)/bootloader/boot.asm -o $(BUILD_DIR)/boot.bin -D FAT32
 
-boot_stage2: always
-	@echo "[BOOTLOADER]  Compiling Stage 2"
-	@$(ASM) $(BOOTLOADER_ASM_FLAGS) $(SOURCE_DIR)/bootloader/loader.asm  -o $(BUILD_DIR)/loader.bin
+boot_stage2: always $(BOOTLOADER_OBJS) $(BOOTLAODER_STARTUP_OBJ)
+	@echo "[BOOTLOADER]  Linking bootloader"
+	@$(LD) -T $(LDSCRIPTS_DIR)/bootloader.ld -o $(BUILD_DIR)/loader.bin $(BOOTLOADER_OBJS)
 
 kernel: always $(KERNEL_OBJS)
 	@echo "[KERNEL]  Linking kernel"
@@ -130,14 +139,24 @@ $(BUILD_DIR)/%.o: $(SOURCE_DIR)/kernel/%.c
 
 $(BUILD_DIR)/%.o: $(SOURCE_DIR)/kernel/*/%.asm
 	@echo "[KERNEL]  Compiling $<"
-	@$(ASM) $< -o $@ $(KERNEL_BOOTLOADER_ASM_FLAGS)
+	@$(ASM) $< -o $@ $(KERNEL_ASM_FLAGS)
 
 $(BUILD_DIR)/%.o: $(SOURCE_DIR)/kernel/%.asm
 	@echo "[KERNEL]  Compiling $<"
-	@$(ASM) $< -o $@ $(KERNEL_BOOTLOADER_ASM_FLAGS)
+	@$(ASM) $< -o $@ $(KERNEL_ASM_FLAGS)
+
+# The same thing for the bootloader
+$(BUILD_DIR)/bootloader/%.o: $(SOURCE_DIR)/bootloader/*/%.asm
+	@echo "[BOOTLOADER]  Compiling $<"
+	@$(ASM) $< -o $@ $(BOOTLOADER_ASM_FLAGS)
+
+$(BUILD_DIR)/bootloader/%.o: $(SOURCE_DIR)/bootloader/%.asm
+	@echo "[BOOTLOADER]  Compiling $<"
+	@$(ASM) $< -o $@ $(BOOTLOADER_ASM_FLAGS)
 
 always:
 	@mkdir -p $(BUILD_DIR)
+	@mkdir -p $(BUILD_DIR)/bootloader
 
 clean:
 	@rm -rf $(BUILD_DIR)/*

@@ -1,0 +1,1 @@
+[extern PLAY_PC_SPEAKER_TONE]

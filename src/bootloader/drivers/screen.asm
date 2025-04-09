@@ -1,5 +1,12 @@
+%include "system.inc"
+
+[section .data]
+    HEX_PREFIX                                          db          "0x", 0
+
 [bits 16]
 [section .text]
+
+[global INIT_SCRREEN]
     INIT_SCRREEN:
         mov ax, 0x0003 ; Text mde 80x25
         int 10h
@@ -10,6 +17,7 @@
         
         ret
 
+[global PRINT]
     PRINT:
         pusha
         mov ah, 0x0e
@@ -25,6 +33,7 @@
         popa
         ret
 
+[global PRINT_TXT]
     PRINT_TXT: ; DS:SI - pointer to a loaded TXT file 
         pusha
         mov ah, 0x0e
@@ -48,6 +57,7 @@
         popa
         ret
 
+[global CLEAR_SCREEN]
     CLEAR_SCREEN:
         pusha
 
@@ -80,6 +90,7 @@
     ; BL - number to fill zeros to
     ; BH 1 - add 0x prefix
 
+[global PRINT_HEX]
     PRINT_HEX:
         pushad
         push ax
@@ -148,7 +159,8 @@
 
         popad
         ret
-    
+
+[global PRINT_DEC]
     PRINT_DEC: ; EDX - number to print, AL 1 - \n
         pushad
         push ax
